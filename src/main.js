@@ -6,6 +6,7 @@ const S = require('./scripts');
 
 const capture = (process.argv.find((a) => a.startsWith('--capture=')) || '').split('=')[1];
 const captureMode = (process.argv.find((a) => a.startsWith('--mode=')) || '').split('=')[1] || 'read';
+const captureRail = (process.argv.find((a) => a.startsWith('--rail=')) || '').split('=')[1] || '';
 let win;
 let watcher;
 
@@ -19,7 +20,10 @@ function inRoot(p) {
   return abs === root || abs.startsWith(root + path.sep);
 }
 
-ipcMain.handle('stories:list', () => ({ root: S.storiesRoot(), stories: S.listStories() }));
+ipcMain.handle('stories:list', () => ({
+  root: S.storiesRoot(),
+  stories: S.listStories().map((s) => ({ ...s, approvalCurrent: S.approvalIsCurrent(s.dir, s.approval) })),
+}));
 
 ipcMain.handle('script:load', (_e, { id, version }) => {
   const story = storyById(id);
@@ -77,7 +81,7 @@ function createWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e) => e.preventDefault());
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query: { mode: captureMode } });
+  win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query: { mode: captureMode, rail: captureRail } });
   if (capture) {
     win.webContents.once('did-finish-load', () => setTimeout(async () => {
       const img = await win.webContents.capturePage();

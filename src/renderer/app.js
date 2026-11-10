@@ -1,6 +1,6 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
-const state = { stories: [], id: null, version: null, data: null, showSources: true, scrolling: null, speed: 40 };
+const state = { stories: [], id: null, version: null, data: null, showSources: true, scrolling: null, speed: 40, query: '', filter: 'all', railCollapsed: localStorage.getItem('nou-rail-collapsed') === 'true' };
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -33,19 +33,38 @@ async function refresh(keep = true) {
 }
 
 function renderStories() {
-  $('stories').innerHTML = state.stories.map((s) => {
+  const visible = state.stories.filter((s) => {
+    const matchesQuery = `${s.title} ${s.id}`.toLowerCase().includes(state.query.toLowerCase());
+    const current = s.approval && s.approvalCurrent;
+    return matchesQuery && (state.filter === 'all' || (state.filter === 'ready' ? current : !current));
+  });
+  $('story-count').textContent = `${visible.length}`;
+  $('stories').innerHTML = visible.map((s) => {
     const latest = s.versions[s.versions.length - 1].version;
-    const appr = s.approval
+    const current = s.approval && s.approvalCurrent;
+    const appr = current
       ? `<span class="pill ok">v${s.approval.version} approved</span>`
-      : '<span class="pill warn">not approved</span>';
+      : s.approval ? `<span class="pill warn">approval stale</span>` : '<span class="pill warn">needs review</span>';
     return `<button class="story ${s.id === state.id ? 'on' : ''}" data-id="${esc(s.id)}" type="button">
-      <div class="story-title">${esc(s.title)}</div>
-      <div class="story-sub"><span>${esc(s.id.slice(0, 10))}</span><span class="pill">v${latest}</span>${appr}</div>
+      <span class="story-icon" aria-hidden="true">${esc(s.title.slice(0,1).toUpperCase())}</span><span class="story-copy"><span class="story-title">${esc(s.title)}</span>
+      <span class="story-sub"><span>${esc(s.id.slice(0, 10))}</span><span class="pill">v${latest}</span>${appr}</span></span>
     </button>`;
   }).join('');
+  if (!visible.length) $('stories').innerHTML = `<div class="story-empty">${state.query ? 'No matching stories' : 'No stories in this filter'}</div>`;
   for (const b of $('stories').querySelectorAll('.story')) {
     b.onclick = () => { state.id = b.dataset.id; state.version = null; refresh(true); };
   }
+}
+
+function setRailCollapsed(collapsed) {
+  state.railCollapsed = collapsed;
+  document.body.classList.toggle('rail-collapsed', collapsed);
+  $('rail-toggle').textContent = collapsed ? '›' : '‹';
+  $('rail-toggle').title = collapsed ? 'Expand navigation' : 'Collapse navigation';
+  $('rail-toggle').setAttribute('aria-label', $('rail-toggle').title);
+  $('rail-expand').setAttribute('aria-hidden', String(!collapsed));
+  $('rail-expand').tabIndex = collapsed ? 0 : -1;
+  localStorage.setItem('nou-rail-collapsed', String(collapsed));
 }
 
 async function load() {
@@ -54,6 +73,12 @@ async function load() {
   const sc = d.script;
   $('title').textContent = sc.title;
   $('meta').textContent = `v${d.version} · edited ${d.modified}` + (d.prevVersion ? ` · compared with v${d.prevVersion}` : '');
+  const banner = $('version-banner');
+  const approvalMatches = d.approval && d.approvalCurrent && d.approval.version === d.version;
+  banner.hidden = !d.approval || approvalMatches;
+  banner.textContent = d.approval && !d.approvalCurrent
+    ? `Approval for v${d.approval.version} is stale because its script changed. Review and approve again before rendering.`
+    : d.approval ? `You’re viewing v${d.version}; v${d.approval.version} is approved. This version is not approved for rendering.` : '';
   $('versions').innerHTML = d.story.versions.map((v) =>
     `<button type="button" class="${v === d.version ? 'on' : ''}" data-v="${v}">v${v}</button>`).join('');
   for (const b of $('versions').querySelectorAll('button')) b.onclick = () => { state.version = Number(b.dataset.v); load(); };
@@ -161,12 +186,26 @@ document.addEventListener('keydown', (e) => {
 
 $('mode-read').onclick = () => { if (!$('prompter').hidden) closePrompter(); };
 $('mode-prompt').onclick = () => state.data && openPrompter();
+$('rail-toggle').onclick = () => setRailCollapsed(!state.railCollapsed);
+$('rail-expand').onclick = () => setRailCollapsed(false);
+$('story-search').addEventListener('input', (e) => { state.query = e.target.value; renderStories(); });
+for (const b of document.querySelectorAll('.filter')) b.onclick = () => {
+  state.filter = b.dataset.filter;
+  document.querySelectorAll('.filter').forEach((x) => x.classList.toggle('on', x === b));
+  renderStories();
+};
+document.addEventListener('keydown', (e) => {
+  const target = e.target;
+  const typing = target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !typing) { e.preventDefault(); setRailCollapsed(false); $('story-search').focus(); }
+});
 $('toggle-sources').onclick = (e) => {
   state.showSources = !state.showSources;
   e.currentTarget.setAttribute('aria-pressed', String(state.showSources));
   $('cues').classList.toggle('hide-src', !state.showSources);
 };
 
+setRailCollapsed(state.railCollapsed || new URLSearchParams(location.search).get('rail') === 'collapsed');
 window.nou.onChange(() => refresh(true));
 refresh(false).then(() => {
   if (new URLSearchParams(location.search).get('mode') === 'prompt') openPrompter();

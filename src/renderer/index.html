@@ -10,8 +10,15 @@
 <body>
 <div class="app">
   <aside class="side">
-    <div class="brand"><span class="dot"></span>Nou Scripts</div>
-    <div class="side-label">Stories</div>
+    <div class="brand"><span class="dot"></span><span class="brand-name">Nou Scripts</span><button id="rail-toggle" class="rail-toggle" type="button" aria-label="Collapse navigation" title="Collapse navigation">‹</button></div>
+    <button id="rail-expand" class="rail-expand" type="button" aria-label="Expand navigation" title="Expand navigation">›</button>
+    <div class="side-heading"><div class="side-label">Stories</div><span id="story-count" class="count"></span></div>
+    <label class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="story-search" type="search" placeholder="Find a story…" autocomplete="off" aria-label="Find a story"><kbd>⌘ K</kbd></label>
+    <div class="filter-row" role="group" aria-label="Filter stories">
+      <button class="filter on" data-filter="all" type="button">All</button>
+      <button class="filter" data-filter="ready" type="button">Approved</button>
+      <button class="filter" data-filter="review" type="button">Needs review</button>
+    </div>
     <nav id="stories" class="stories" aria-label="Stories"></nav>
     <div class="side-foot" id="root"></div>
   </aside>
@@ -31,6 +38,8 @@
         <button id="toggle-sources" class="ghost" type="button" aria-pressed="true">Sources</button>
       </div>
     </header>
+
+    <div id="version-banner" class="version-banner" hidden></div>
 
     <section class="stats" id="stats"></section>
 

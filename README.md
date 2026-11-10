@@ -56,3 +56,19 @@ npm start
 
 `npm test` runs the parser and approval tests. `npm run capture` writes a screenshot of the window to
 `out/capture.png` without showing it; add `--mode=prompt` after `--` for the teleprompter view.
+
+## Android APK
+
+The native Android companion is in `android/`. It uses the Android system folder picker to open a
+story folder containing `script_v1.md`, `script_v2.md`, and (after approval) `approval.json`. It
+works offline and stores the approval beside the script folder. The Android app bundles the same
+short ban-list vocabulary for review flags; a flag is an editing prompt, not an AI-authorship test.
+
+The `Android APK` GitHub Actions workflow builds an installable debug-signed APK on pull requests,
+main pushes, and manual runs. Download it from the workflow run's **Artifacts** section. When a
+GitHub Release is published, the workflow attaches `nou-scripts-android-<tag>.apk` to that release.
+This local repository currently has no Git remote, so these downloads become available after the
+repository is connected to GitHub and the workflow is run there.
+
+Local build: `cd android && ./gradlew assembleDebug`. The APK is written to
+`android/app/build/outputs/apk/debug/app-debug.apk`.
