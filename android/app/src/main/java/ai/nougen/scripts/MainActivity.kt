@@ -8,6 +8,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,9 +73,18 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val Accent = Color(0xFFBC8CFF)
-private val Gold = Color(0xFFE7B65A)
-private val Warning = Color(0xFFF4C86A)
+// NouGenDesign & Stitch DESIGN.md canonical token palette
+private val Bg = Color(0xFF141414)
+private val Panel = Color(0xFF1D1D23)
+private val Panel2 = Color(0xFF25252E)
+private val Line = Color(0xFF2E2E3A)
+private val TextColor = Color(0xFFF2EEE6)
+private val MutedColor = Color(0xFFBDB8AD)
+private val FaintColor = Color(0xFF7A766F)
+private val AccentGold = Color(0xFFE8B86D) // Matte amber anchor for ON CAM
+private val AccentIris = Color(0xFFBC8CFF) // Matte iris for VO
+private val VerifiedGreen = Color(0xFFA9C79B) // Cryptographic approval seal
+private val DangerColor = Color(0xFFFFB4AB) // Wording lint alerts
 
 private data class ScriptVersion(val version: Int, val name: String, val body: String)
 private data class Cue(val number: Int, val kind: String, val hint: String, val text: String, val seconds: Int, val flags: List<String>)
@@ -86,12 +102,12 @@ class MainActivity : ComponentActivity() {
 private fun NouScriptsTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Accent,
-            secondary = Gold,
-            background = Color(0xFF0D0D12),
-            surface = Color(0xFF15151D),
-            onBackground = Color(0xFFF1F0F5),
-            onSurface = Color(0xFFF1F0F5),
+            primary = AccentGold,
+            secondary = AccentIris,
+            background = Bg,
+            surface = Panel,
+            onBackground = TextColor,
+            onSurface = TextColor,
         ),
         content = content,
     )
@@ -192,36 +208,36 @@ private fun ScriptReviewScreen() {
         val cue = inspectingCue!!
         AlertDialog(
             onDismissRequest = { inspectingCue = null },
-            title = { Text("Wording Flag · Cue ${cue.number}") },
+            title = { Text("Wording Flag · Cue ${cue.number}", color = AccentGold, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("Detected AI cliché / banned term:", fontWeight = FontWeight.SemiBold, color = Warning)
+                    Text("Detected AI cliché / banned term:", fontWeight = FontWeight.SemiBold, color = DangerColor)
                     Spacer(Modifier.height(4.dp))
-                    Text(cue.flags.joinToString(", "), style = MaterialTheme.typography.bodyLarge, color = Accent)
+                    Text(cue.flags.joinToString(", "), style = MaterialTheme.typography.bodyLarge, color = AccentIris, fontFamily = FontFamily.Monospace)
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "NouGen voice doctrine mandates direct, active human phrasing. Avoid hollow buzzwords (e.g. delve, tapestry, testament). Replace with punchy, plain-English verbs.",
+                        "Per NouGen voice doctrine, scripts must use direct, active reporting language. Clichés (e.g. delve, tapestry, testament, vibrant realm) reduce audience retention. Replace with concrete verbs and straightforward facts.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFAAA8B7)
+                        color = MutedColor
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = { inspectingCue = null }) { Text("Got it") } }
+            confirmButton = { TextButton(onClick = { inspectingCue = null }) { Text("Understood", color = AccentGold) } }
         )
     }
 
     if (askApprove && selected != null) {
         AlertDialog(
             onDismissRequest = { askApprove = false },
-            title = { Text("Approve v${selected.version} for render?") },
+            title = { Text("Approve v${selected.version} for render?", color = TextColor, fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("This writes a SHA-256 approval record beside ${selected.name}. Any later edit to the script file invalidates the hash and requires re-approval.")
+                    Text("This signs an immutable SHA-256 seal beside ${selected.name}. Any later file edit invalidates the signature and halts the render queue.", color = MutedColor)
                     Spacer(Modifier.height(10.dp))
                     OutlinedTextField(
                         value = approvalNote,
                         onValueChange = { approvalNote = it },
-                        label = { Text("Note for render step (optional)") },
+                        label = { Text("Director's note (optional)") },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -241,31 +257,69 @@ private fun ScriptReviewScreen() {
                             approvalCurrent = saved?.sha256 == sha256(selected.body)
                         }
                     }
-                }) { Text("Approve this version") }
+                }) { Text("Sign & Approve", color = AccentGold, fontWeight = FontWeight.Bold) }
             },
-            dismissButton = { TextButton(onClick = { askApprove = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { askApprove = false }) { Text("Cancel", color = MutedColor) } },
         )
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(modifier = Modifier.fillMaxSize(), color = Bg) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Text("Nou Scripts", style = MaterialTheme.typography.labelLarge, color = Accent, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(5.dp))
-            Text(selected?.let { titleOf(it.body) } ?: "Review a script", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-            Text(folderName, style = MaterialTheme.typography.bodySmall, color = Color(0xFFAAA8B7))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.width(8.dp).height(8.dp).background(AccentGold, RoundedCornerShape(4.dp)))
+                Spacer(Modifier.width(8.dp))
+                Text("Nou Scripts", style = MaterialTheme.typography.labelLarge, color = AccentGold, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                Text("· Broadcast Review & Gate", style = MaterialTheme.typography.labelSmall, color = FaintColor)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                selected?.let { titleOf(it.body) } ?: "Review a script",
+                style = MaterialTheme.typography.headlineMedium,
+                color = TextColor,
+                fontWeight = FontWeight.Bold
+            )
+            Text(folderName, style = MaterialTheme.typography.bodySmall, color = MutedColor, fontFamily = FontFamily.Monospace)
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = { folderPicker.launch(folderUri) }) { Text(if (folderUri == null) "Open story folder" else "Change folder") }
-                if (folderUri != null) OutlinedButton(onClick = { refreshTick++ }, enabled = !busy) { Text("Refresh") }
-                if (busy) Text("Loading…", color = Color(0xFFAAA8B7))
+                Button(
+                    onClick = { folderPicker.launch(folderUri) },
+                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Panel2, contentColor = TextColor)
+                ) { Text(if (folderUri == null) "Open story folder" else "Change folder") }
+                if (folderUri != null) {
+                    OutlinedButton(
+                        onClick = { refreshTick++ },
+                        enabled = !busy,
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Line)
+                    ) { Text("Refresh") }
+                }
+                if (busy) Text("Loading…", color = MutedColor, fontFamily = FontFamily.Monospace)
             }
-            if (loadError != null) Text(loadError!!, color = Warning, modifier = Modifier.padding(top = 8.dp))
+            if (loadError != null) Text(loadError!!, color = DangerColor, modifier = Modifier.padding(top = 8.dp))
             if (versions.isNotEmpty()) {
                 Spacer(Modifier.height(13.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     versions.forEach { v ->
-                        if (v.version == selectedVersion) Button(onClick = { selectedVersion = v.version }) { Text("v${v.version}") }
-                        else OutlinedButton(onClick = { selectedVersion = v.version }) { Text("v${v.version}") }
+                        val isSelected = v.version == selectedVersion
+                        if (isSelected) {
+                            Button(
+                                onClick = { selectedVersion = v.version },
+                                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF141414))
+                            ) { Text("v${v.version}", fontWeight = FontWeight.Bold) }
+                        } else {
+                            OutlinedButton(
+                                onClick = { selectedVersion = v.version },
+                                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Line)
+                            ) { Text("v${v.version}") }
+                        }
                     }
                 }
             }
@@ -274,30 +328,66 @@ private fun ScriptReviewScreen() {
                 val runtime = (totalWords / 2.8).toInt()
                 val flaggedCount = cues.count { it.flags.isNotEmpty() }
                 Spacer(Modifier.height(12.dp))
-                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF17171F))) {
-                    Column(Modifier.fillMaxWidth().padding(13.dp)) {
-                        Text("${formatTime(runtime)}  ·  $totalWords words  ·  ${cues.size} cues", fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(3.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Panel),
+                    border = BorderStroke(1.dp, Line),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "${formatTime(runtime)}  ·  $totalWords words  ·  ${cues.size} cues",
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextColor,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        Spacer(Modifier.height(5.dp))
                         val status = when {
                             approvedSelected -> "v${selected.version} approved for render" + if (approval?.note.isNullOrBlank()) "" else " · “${approval?.note}”"
-                            approval != null && !approvalCurrent -> "Approval is stale; review and approve again"
-                            approval != null -> "v${approval!!.version} approved; v${selected.version} is not approved"
-                            else -> "Not approved · rendering stays gated"
+                            approval != null && !approvalCurrent -> "Approval is stale; file edited since signature"
+                            approval != null -> "v${approval!!.version} approved; v${selected.version} unapproved"
+                            else -> "Not approved · rendering gated"
                         }
-                        Text(status, color = if (approvedSelected) Color(0xFF77D89B) else Warning, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            status,
+                            color = if (approvedSelected) VerifiedGreen else AccentGold,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium
+                        )
                         if (flaggedCount > 0) {
-                            Spacer(Modifier.height(2.dp))
-                            Text("$flaggedCount cue(s) contain AI clichés / banlist terms", color = Color(0xFFFF8B8B), style = MaterialTheme.typography.labelSmall)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "$flaggedCount cue(s) flagged for AI clichés / banlist wording",
+                                color = DangerColor,
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { askApprove = true }, enabled = !approvedSelected && !busy, modifier = Modifier.weight(1f)) {
-                        Text(if (approvedSelected) "Approved" else "Approve v${selected.version}")
+                    Button(
+                        onClick = { askApprove = true },
+                        enabled = !approvedSelected && !busy,
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AccentGold,
+                            contentColor = Color(0xFF141414),
+                            disabledContainerColor = Panel2,
+                            disabledContentColor = FaintColor
+                        )
+                    ) {
+                        Text(if (approvedSelected) "Approved" else "Approve v${selected.version}", fontWeight = FontWeight.Bold)
                     }
-                    OutlinedButton(onClick = { inPrompter = true }, modifier = Modifier.weight(1f)) {
-                        Text("Teleprompter")
+                    OutlinedButton(
+                        onClick = { inPrompter = true },
+                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Line)
+                    ) {
+                        Text("Teleprompter", color = TextColor, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -305,11 +395,14 @@ private fun ScriptReviewScreen() {
                     items(cues, key = { it.number }) { cue ->
                         CueCard(cue = cue, onFlagClick = { inspectingCue = cue })
                     }
-                    if (cues.isEmpty()) item { Text("No numbered cue cards were found in this script.", color = Color(0xFFAAA8B7)) }
+                    if (cues.isEmpty()) item { Text("No numbered cue cards found in this script.", color = MutedColor) }
                 }
             } else if (!busy && loadError == null) {
                 Spacer(Modifier.height(18.dp))
-                Text("Choose the story folder containing script_v1.md, script_v2.md, and approval.json. The folder stays on this device; no upload occurs.", color = Color(0xFFAAA8B7))
+                Text(
+                    "Choose a story folder containing script_v1.md and approval.json. All state remains strictly on this device.",
+                    color = MutedColor
+                )
             }
         }
     }
@@ -317,27 +410,60 @@ private fun ScriptReviewScreen() {
 
 @Composable
 private fun CueCard(cue: Cue, onFlagClick: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF15151D)), shape = RoundedCornerShape(13.dp)) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${cue.number}  ·  ${cue.kind}", color = if (cue.kind == "ON CAM") Gold else Accent, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                Text("${countWords(cue.text)} words · ~${cue.seconds}s", color = Color(0xFFAAA8B7), style = MaterialTheme.typography.labelSmall)
-            }
-            if (cue.hint.isNotBlank()) Text(cue.hint, color = Color(0xFFAAA8B7), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 3.dp))
-            Spacer(Modifier.height(8.dp))
-            Text(cue.text, style = MaterialTheme.typography.bodyLarge, lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.25f)
-            if (cue.flags.isNotEmpty()) {
+    val isCam = cue.kind.contains("ON CAM", ignoreCase = true)
+    val indicatorColor = if (isCam) AccentGold else AccentIris
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Panel),
+        border = BorderStroke(1.dp, Line),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Left camera indicator anchor stripe
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(96.dp)
+                    .background(indicatorColor)
+            )
+            Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${cue.number}  ·  ${cue.kind}",
+                        color = indicatorColor,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        "${countWords(cue.text)}w · ~${cue.seconds}s",
+                        color = MutedColor,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                if (cue.hint.isNotBlank()) {
+                    Text(cue.hint, color = MutedColor, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 2.dp))
+                }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Review wording: ${cue.flags.joinToString()} ⓘ",
-                    color = Warning,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier
-                        .background(Color(0x22F4C86A), RoundedCornerShape(6.dp))
-                        .clickable { onFlagClick() }
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                    cue.text,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextColor,
+                    lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.3f
                 )
+                if (cue.flags.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Review wording: ${cue.flags.joinToString()} ⓘ",
+                        color = DangerColor,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier
+                            .background(Color(0x22FFB4AB), RoundedCornerShape(4.dp))
+                            .clickable { onFlagClick() }
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
             }
         }
     }
@@ -356,6 +482,7 @@ private fun TeleprompterScreen(
     var mirrorMode by remember { mutableStateOf(false) }
     var speedPxPerSec by remember { mutableFloatStateOf(45f) }
     var fontSizeSp by remember { mutableIntStateOf(34) }
+    var showControls by remember { mutableStateOf(true) }
 
     LaunchedEffect(isScrolling, speedPxPerSec) {
         if (!isScrolling) return@LaunchedEffect
@@ -375,18 +502,19 @@ private fun TeleprompterScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color(0xFF000000))
+            .clickable { showControls = !showControls }
     ) {
-        // Center read line guide
+        // Center reticle guide
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(2.dp)
-                .background(Accent.copy(alpha = 0.35f))
+                .background(AccentGold.copy(alpha = 0.35f))
                 .align(Alignment.Center)
         )
 
-        // Scrolling Cues
+        // Scrolling Cues Container
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -396,12 +524,13 @@ private fun TeleprompterScreen(
                 .verticalScroll(scrollState)
                 .padding(horizontal = 28.dp)
         ) {
-            Spacer(Modifier.height(300.dp))
+            Spacer(Modifier.height(320.dp))
             cues.forEach { cue ->
+                val isCam = cue.kind.contains("ON CAM", ignoreCase = true)
                 Column(modifier = Modifier.padding(bottom = 36.dp)) {
                     Text(
                         text = "${cue.number} · ${cue.kind}",
-                        color = if (cue.kind == "ON CAM") Gold else Accent,
+                        color = if (isCam) AccentGold else AccentIris,
                         fontSize = (fontSizeSp * 0.45f).sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
@@ -416,45 +545,93 @@ private fun TeleprompterScreen(
                     )
                 }
             }
-            Spacer(Modifier.height(500.dp))
+            Spacer(Modifier.height(600.dp))
         }
 
-        // Top HUD Controls
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp)
-                .align(Alignment.TopCenter),
-            colors = CardDefaults.cardColors(containerColor = Color(0xDD15151D)),
-            shape = RoundedCornerShape(12.dp)
+        // Animated HUD Controls Bar
+        AnimatedVisibility(
+            visible = showControls,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter)
         ) {
-            Row(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(10.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xEE1A1A22)),
+                border = BorderStroke(1.dp, Line),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                OutlinedButton(onClick = onExit) { Text("Exit") }
-                Button(onClick = { isScrolling = !isScrolling }) {
-                    Text(if (isScrolling) "Pause" else "Play")
-                }
-                OutlinedButton(onClick = { mirrorMode = !mirrorMode }) {
-                    Text(if (mirrorMode) "Mirror: ON" else "Mirror: OFF")
-                }
-                Spacer(Modifier.weight(1f))
-                OutlinedButton(onClick = { speedPxPerSec = (speedPxPerSec - 10f).coerceAtLeast(15f) }) {
-                    Text("-")
-                }
-                Text("${speedPxPerSec.toInt()} px/s", color = Color(0xFFAAA8B7), style = MaterialTheme.typography.labelSmall)
-                OutlinedButton(onClick = { speedPxPerSec = (speedPxPerSec + 10f).coerceAtMost(180f) }) {
-                    Text("+")
-                }
-                OutlinedButton(onClick = { fontSizeSp = (fontSizeSp - 4).coerceAtLeast(22) }) {
-                    Text("A-")
-                }
-                OutlinedButton(onClick = { fontSizeSp = (fontSizeSp + 4).coerceAtMost(56) }) {
-                    Text("A+")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onExit,
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, Line)
+                    ) { Text("Exit", color = TextColor) }
+
+                    Button(
+                        onClick = { isScrolling = !isScrolling },
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF141414))
+                    ) {
+                        Text(if (isScrolling) "Pause" else "Play", fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = { mirrorMode = !mirrorMode },
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, if (mirrorMode) AccentGold else Line),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (mirrorMode) AccentGold else TextColor)
+                    ) {
+                        Text(if (mirrorMode) "Mirror: ON" else "Mirror: OFF")
+                    }
+
+                    Spacer(Modifier.weight(1f))
+
+                    OutlinedButton(
+                        onClick = { speedPxPerSec = (speedPxPerSec - 10f).coerceAtLeast(15f) },
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, Line)
+                    ) { Text("-", color = TextColor, fontWeight = FontWeight.Bold) }
+
+                    Text(
+                        "${speedPxPerSec.toInt()} px/s",
+                        color = MutedColor,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace
+                    )
+
+                    OutlinedButton(
+                        onClick = { speedPxPerSec = (speedPxPerSec + 10f).coerceAtMost(180f) },
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, Line)
+                    ) { Text("+", color = TextColor, fontWeight = FontWeight.Bold) }
+
+                    OutlinedButton(
+                        onClick = { fontSizeSp = (fontSizeSp - 4).coerceAtLeast(22) },
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, Line)
+                    ) { Text("A-", color = TextColor) }
+
+                    OutlinedButton(
+                        onClick = { fontSizeSp = (fontSizeSp + 4).coerceAtMost(56) },
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, Line)
+                    ) { Text("A+", color = TextColor) }
                 }
             }
         }
@@ -486,7 +663,7 @@ private fun parseCues(markdown: String, terms: List<String>): List<Cue> {
                 Regex("""(?i)(?<![\p{L}\p{N}])${Regex.escape(clean)}(?![\p{L}\p{N}])""").containsMatchIn(text)
             }
         }.distinct()
-        Cue(cue.number, if (cue.kind.contains("ON CAM")) "ON CAM" else cue.kind, cue.hint, text,
+        Cue(cue.number, if (cue.kind.contains("ON CAM", ignoreCase = true)) "ON CAM" else cue.kind, cue.hint, text,
             (countWords(text) / 2.8).toInt().coerceAtLeast(1), flags)
     }
 }
