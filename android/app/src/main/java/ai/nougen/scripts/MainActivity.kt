@@ -4,11 +4,14 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,15 +19,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,18 +39,24 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -59,7 +72,7 @@ private val Warning = Color(0xFFF4C86A)
 
 private data class ScriptVersion(val version: Int, val name: String, val body: String)
 private data class Cue(val number: Int, val kind: String, val hint: String, val text: String, val seconds: Int, val flags: List<String>)
-private data class Approval(val version: Int, val file: String, val sha256: String, val whenText: String)
+private data class Approval(val version: Int, val file: String, val sha256: String, val whenText: String, val note: String)
 private data class LoadedStory(val name: String, val versions: List<ScriptVersion>, val savedJson: JSONObject?, val isCurrent: Boolean)
 
 class MainActivity : ComponentActivity() {
@@ -98,7 +111,10 @@ private fun ScriptReviewScreen() {
     var busy by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var askApprove by remember { mutableStateOf(false) }
+    var approvalNote by remember { mutableStateOf("") }
     var refreshTick by remember { mutableStateOf(0) }
+    var inPrompter by remember { mutableStateOf(false) }
+    var inspectingCue by remember { mutableStateOf<Cue?>(null) }
 
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
@@ -139,7 +155,13 @@ private fun ScriptReviewScreen() {
             versions = loaded.versions
             if (selectedVersion == null || loaded.versions.none { it.version == selectedVersion }) selectedVersion = loaded.versions.lastOrNull()?.version
             approval = loaded.savedJson?.let {
-                Approval(it.optInt("version"), it.optString("file"), it.optString("sha256"), it.optString("approved_at_eastern", it.optString("approved_at")))
+                Approval(
+                    it.optInt("version"),
+                    it.optString("file"),
+                    it.optString("sha256"),
+                    it.optString("approved_at_eastern", it.optString("approved_at")),
+                    it.optString("note")
+                )
             }
             approvalCurrent = loaded.isCurrent
         }.onFailure { loadError = it.message ?: "Could not read the selected folder" }
@@ -147,22 +169,71 @@ private fun ScriptReviewScreen() {
     }
 
     val selected = versions.firstOrNull { it.version == selectedVersion }
-    val cues = remember(selected?.body) { selected?.let { parseCues(it.body, context.assets.open("banlist.txt").bufferedReader().use { r -> r.readLines() }) } ?: emptyList() }
+    val cues = remember(selected?.body) {
+        selected?.let {
+            val terms = runCatching {
+                context.assets.open("banlist.txt").bufferedReader().use { r -> r.readLines() }
+            }.getOrDefault(emptyList())
+            parseCues(it.body, terms)
+        } ?: emptyList()
+    }
     val approvedSelected = approvalCurrent && approval?.version == selected?.version
+
+    if (inPrompter && selected != null) {
+        TeleprompterScreen(
+            script = selected,
+            cues = cues,
+            onExit = { inPrompter = false },
+        )
+        return
+    }
+
+    if (inspectingCue != null) {
+        val cue = inspectingCue!!
+        AlertDialog(
+            onDismissRequest = { inspectingCue = null },
+            title = { Text("Wording Flag · Cue ${cue.number}") },
+            text = {
+                Column {
+                    Text("Detected AI cliché / banned term:", fontWeight = FontWeight.SemiBold, color = Warning)
+                    Spacer(Modifier.height(4.dp))
+                    Text(cue.flags.joinToString(", "), style = MaterialTheme.typography.bodyLarge, color = Accent)
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "NouGen voice doctrine mandates direct, active human phrasing. Avoid hollow buzzwords (e.g. delve, tapestry, testament). Replace with punchy, plain-English verbs.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFAAA8B7)
+                    )
+                }
+            },
+            confirmButton = { TextButton(onClick = { inspectingCue = null }) { Text("Got it") } }
+        )
+    }
 
     if (askApprove && selected != null) {
         AlertDialog(
             onDismissRequest = { askApprove = false },
-            title = { Text("Approve v${selected.version}?") },
-            text = { Text("This writes a SHA-256 approval record beside ${selected.name}. Any edit to the file makes that approval stale.") },
+            title = { Text("Approve v${selected.version} for render?") },
+            text = {
+                Column {
+                    Text("This writes a SHA-256 approval record beside ${selected.name}. Any later edit to the script file invalidates the hash and requires re-approval.")
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = approvalNote,
+                        onValueChange = { approvalNote = it },
+                        label = { Text("Note for render step (optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
+                    val note = approvalNote.trim()
                     askApprove = false
                     val uri = folderUri ?: return@TextButton
                     scope.launch {
-                        val result = withContext(Dispatchers.IO) { runCatching { writeApproval(context, uri, selected) } }
+                        val result = withContext(Dispatchers.IO) { runCatching { writeApproval(context, uri, selected, note) } }
                         result.onFailure { loadError = it.message ?: "Approval could not be saved" }
-                        // Reloading the folder recomputes the approval hash from the saved file.
                         folderUri = uri
                         if (result.isSuccess) {
                             val saved = result.getOrNull()
@@ -201,27 +272,39 @@ private fun ScriptReviewScreen() {
             if (selected != null) {
                 val totalWords = cues.sumOf { countWords(it.text) }
                 val runtime = (totalWords / 2.8).toInt()
+                val flaggedCount = cues.count { it.flags.isNotEmpty() }
                 Spacer(Modifier.height(12.dp))
                 Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF17171F))) {
                     Column(Modifier.fillMaxWidth().padding(13.dp)) {
                         Text("${formatTime(runtime)}  ·  $totalWords words  ·  ${cues.size} cues", fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(3.dp))
                         val status = when {
-                            approvedSelected -> "v${selected.version} approved for render"
+                            approvedSelected -> "v${selected.version} approved for render" + if (approval?.note.isNullOrBlank()) "" else " · “${approval?.note}”"
                             approval != null && !approvalCurrent -> "Approval is stale; review and approve again"
                             approval != null -> "v${approval!!.version} approved; v${selected.version} is not approved"
                             else -> "Not approved · rendering stays gated"
                         }
                         Text(status, color = if (approvedSelected) Color(0xFF77D89B) else Warning, style = MaterialTheme.typography.bodySmall)
+                        if (flaggedCount > 0) {
+                            Spacer(Modifier.height(2.dp))
+                            Text("$flaggedCount cue(s) contain AI clichés / banlist terms", color = Color(0xFFFF8B8B), style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                Button(onClick = { askApprove = true }, enabled = !approvedSelected && !busy, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (approvedSelected) "Approved" else "Approve v${selected.version} for render")
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { askApprove = true }, enabled = !approvedSelected && !busy, modifier = Modifier.weight(1f)) {
+                        Text(if (approvedSelected) "Approved" else "Approve v${selected.version}")
+                    }
+                    OutlinedButton(onClick = { inPrompter = true }, modifier = Modifier.weight(1f)) {
+                        Text("Teleprompter")
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(cues, key = { it.number }) { cue -> CueCard(cue) }
+                    items(cues, key = { it.number }) { cue ->
+                        CueCard(cue = cue, onFlagClick = { inspectingCue = cue })
+                    }
                     if (cues.isEmpty()) item { Text("No numbered cue cards were found in this script.", color = Color(0xFFAAA8B7)) }
                 }
             } else if (!busy && loadError == null) {
@@ -233,7 +316,7 @@ private fun ScriptReviewScreen() {
 }
 
 @Composable
-private fun CueCard(cue: Cue) {
+private fun CueCard(cue: Cue, onFlagClick: () -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF15151D)), shape = RoundedCornerShape(13.dp)) {
         Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -246,8 +329,133 @@ private fun CueCard(cue: Cue) {
             Text(cue.text, style = MaterialTheme.typography.bodyLarge, lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.25f)
             if (cue.flags.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                Text("Review wording: ${cue.flags.joinToString()}", color = Warning, style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.background(Color(0x22F4C86A), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 5.dp))
+                Text(
+                    "Review wording: ${cue.flags.joinToString()} ⓘ",
+                    color = Warning,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .background(Color(0x22F4C86A), RoundedCornerShape(6.dp))
+                        .clickable { onFlagClick() }
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeleprompterScreen(
+    script: ScriptVersion,
+    cues: List<Cue>,
+    onExit: () -> Unit,
+) {
+    BackHandler { onExit() }
+
+    val scrollState = rememberScrollState()
+    var isScrolling by remember { mutableStateOf(false) }
+    var mirrorMode by remember { mutableStateOf(false) }
+    var speedPxPerSec by remember { mutableFloatStateOf(45f) }
+    var fontSizeSp by remember { mutableIntStateOf(34) }
+
+    LaunchedEffect(isScrolling, speedPxPerSec) {
+        if (!isScrolling) return@LaunchedEffect
+        var prevNanos = 0L
+        while (isActive && isScrolling) {
+            withFrameNanos { now ->
+                if (prevNanos != 0L) {
+                    val dt = (now - prevNanos) / 1_000_000_000f
+                    val delta = speedPxPerSec * dt
+                    scrollState.dispatchRawDelta(delta)
+                }
+                prevNanos = now
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        // Center read line guide
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(Accent.copy(alpha = 0.35f))
+                .align(Alignment.Center)
+        )
+
+        // Scrolling Cues
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    if (mirrorMode) scaleX = -1f
+                }
+                .verticalScroll(scrollState)
+                .padding(horizontal = 28.dp)
+        ) {
+            Spacer(Modifier.height(300.dp))
+            cues.forEach { cue ->
+                Column(modifier = Modifier.padding(bottom = 36.dp)) {
+                    Text(
+                        text = "${cue.number} · ${cue.kind}",
+                        color = if (cue.kind == "ON CAM") Gold else Accent,
+                        fontSize = (fontSizeSp * 0.45f).sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = cue.text,
+                        color = Color(0xFFF4F1FB),
+                        fontSize = fontSizeSp.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = (fontSizeSp * 1.45f).sp
+                    )
+                }
+            }
+            Spacer(Modifier.height(500.dp))
+        }
+
+        // Top HUD Controls
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp)
+                .align(Alignment.TopCenter),
+            colors = CardDefaults.cardColors(containerColor = Color(0xDD15151D)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(onClick = onExit) { Text("Exit") }
+                Button(onClick = { isScrolling = !isScrolling }) {
+                    Text(if (isScrolling) "Pause" else "Play")
+                }
+                OutlinedButton(onClick = { mirrorMode = !mirrorMode }) {
+                    Text(if (mirrorMode) "Mirror: ON" else "Mirror: OFF")
+                }
+                Spacer(Modifier.weight(1f))
+                OutlinedButton(onClick = { speedPxPerSec = (speedPxPerSec - 10f).coerceAtLeast(15f) }) {
+                    Text("-")
+                }
+                Text("${speedPxPerSec.toInt()} px/s", color = Color(0xFFAAA8B7), style = MaterialTheme.typography.labelSmall)
+                OutlinedButton(onClick = { speedPxPerSec = (speedPxPerSec + 10f).coerceAtMost(180f) }) {
+                    Text("+")
+                }
+                OutlinedButton(onClick = { fontSizeSp = (fontSizeSp - 4).coerceAtLeast(22) }) {
+                    Text("A-")
+                }
+                OutlinedButton(onClick = { fontSizeSp = (fontSizeSp + 4).coerceAtMost(56) }) {
+                    Text("A+")
+                }
             }
         }
     }
@@ -272,7 +480,12 @@ private fun parseCues(markdown: String, terms: List<String>): List<Cue> {
     }
     return found.map { cue ->
         val text = cue.text.joinToString(" ")
-        val flags = terms.filter { term -> Regex("""(?i)(?<![\p{L}\p{N}])${Regex.escape(term.trim())}(?![\p{L}\p{N}])""").containsMatchIn(text) }.distinct()
+        val flags = terms.filter { term ->
+            val clean = term.trim()
+            if (clean.isBlank()) false else {
+                Regex("""(?i)(?<![\p{L}\p{N}])${Regex.escape(clean)}(?![\p{L}\p{N}])""").containsMatchIn(text)
+            }
+        }.distinct()
         Cue(cue.number, if (cue.kind.contains("ON CAM")) "ON CAM" else cue.kind, cue.hint, text,
             (countWords(text) / 2.8).toInt().coerceAtLeast(1), flags)
     }
@@ -280,7 +493,7 @@ private fun parseCues(markdown: String, terms: List<String>): List<Cue> {
 
 private data class MutableCue(val number: Int, val kind: String, val hint: String, val text: MutableList<String> = mutableListOf())
 
-private fun writeApproval(context: android.content.Context, folderUri: Uri, script: ScriptVersion): Approval {
+private fun writeApproval(context: android.content.Context, folderUri: Uri, script: ScriptVersion, note: String = ""): Approval {
     val dir = DocumentFile.fromTreeUri(context, folderUri) ?: error("Story folder is unavailable")
     val source = dir.findFile(script.name) ?: error("${script.name} is no longer in this story folder")
     val currentBytes = context.contentResolver.openInputStream(source.uri)?.use { it.readBytes() }
@@ -296,7 +509,7 @@ private fun writeApproval(context: android.content.Context, folderUri: Uri, scri
         .put("sha256", hash)
         .put("approved_at", now.toString())
         .put("approved_at_eastern", eastern)
-        .put("note", "")
+        .put("note", note)
         .put("by", "Dave (Nou Scripts Android app)")
     val stamp = System.currentTimeMillis()
     val staged = dir.createFile("application/json", ".approval-$stamp.pending")
@@ -320,7 +533,7 @@ private fun writeApproval(context: android.content.Context, folderUri: Uri, scri
         error("Can't finalize approval.json; the previous approval was restored when possible")
     }
     if (existing != null) dir.findFile(backupName)?.delete()
-    return Approval(script.version, script.name, hash, record.getString("approved_at"))
+    return Approval(script.version, script.name, hash, record.getString("approved_at"), note)
 }
 
 private fun sha256(text: String): String = MessageDigest.getInstance("SHA-256")

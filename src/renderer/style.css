@@ -114,6 +114,7 @@ button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent);
 .chg { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px; }
 .chg.changed { background: var(--warn-soft); color: var(--warn); }
 .chg.new { background: var(--ok-soft); color: var(--ok); }
+.chg.cliche { background: rgba(244, 100, 100, 0.16); color: #ff8b8b; }
 .cue-text { font: 19px/1.65 var(--read); color: #f2f0f7; margin: 0; max-width:76ch; }
 .cue-src { margin-top: 10px; color: var(--faint); font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 8px; }
 .hide-src .cue-src { display: none; }
@@ -132,8 +133,13 @@ code { background: var(--panel-2); padding: 1px 5px; border-radius: 5px; font-si
 .prompter-bar { display: flex; gap: 18px; align-items: center; padding: 14px 24px 14px 90px; color: #8a83a3; font-size: 13px; border-bottom: 1px solid #1c1730; }
 .prompter-bar #p-title { color: #ddd; font-weight: 600; }
 .p-help { margin-left: auto; }
+.prompter-controls { display: flex; gap: 6px; align-items: center; }
+.p-btn { background: #1a1728; border: 1px solid #332d4e; border-radius: 6px; color: #b7b0d0; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.p-btn:hover { background: #27213d; color: #fff; }
+.p-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 .prompter-scroll { flex: 1; overflow: hidden; position: relative; }
-.prompter-text { padding: 45vh 12vw 70vh; font: 600 46px/1.45 var(--read); color: #f4f1fb; }
+.prompter-text { padding: 45vh 12vw 70vh; font: 600 46px/1.45 var(--read); color: #f4f1fb; transition: font-size .1s ease; }
+.prompter-text.mirrored { transform: scaleX(-1); }
 .prompter-text .pc { margin: 0 0 1.1em; }
 .prompter-text .pk { display: block; font-size: 18px; letter-spacing: 1px; margin-bottom: 6px; font-weight: 700; }
 .prompter-text .cam .pk { color: var(--gold); }

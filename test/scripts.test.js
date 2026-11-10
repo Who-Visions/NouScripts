@@ -63,3 +63,44 @@ test('parses the real Fable 5.2 script when present', { skip: !fs.existsSync(pat
   assert.deepStrictEqual(s.cues.filter((c) => c.onCamera).map((c) => c.n), [1, 7]);
   assert.ok(s.words > 200 && s.words < 300, `words=${s.words}`);
 });
+
+test('detects AI clichés and banlist terms in cues', () => {
+  const fluffScript = `# Nou script v1: Fluff story
+
+**1. ON CAM**
+Let's delve into this vibrant realm and showcase groundbreaking advancements.
+
+**2. VO**
+This is clean direct reporting without any fluff.
+`;
+  const s = S.parseScript(fluffScript);
+  assert.strictEqual(s.flaggedCount, 1);
+  assert.ok(s.cues[0].flags.includes('delve') || s.cues[0].flags.includes("let's delve into"));
+  assert.ok(s.cues[0].flags.includes('vibrant'));
+  assert.ok(s.cues[0].flags.includes('showcase'));
+  assert.ok(s.cues[0].flags.includes('realm'));
+  assert.strictEqual(s.cues[1].flags.length, 0);
+});
+
+test('generates OpenClap .clap interchange format and exports file', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nouscripts-clap-'));
+  const dir = path.join(root, '2026-11-10_clap-test');
+  fs.mkdirSync(dir);
+  fs.writeFileSync(path.join(dir, 'script_v1.md'), V1);
+
+  const res = S.exportOpenClap(dir, 1);
+  assert.strictEqual(res.file, '2026-11-10_clap-test_v1.clap');
+  assert.ok(fs.existsSync(res.path));
+  const text = fs.readFileSync(res.path, 'utf8');
+
+  assert.match(text, /format: clap-0/);
+  assert.match(text, /numberOfEntities: 1/);
+  assert.match(text, /id: entity-nou/);
+  assert.match(text, /track: 1/);
+  assert.match(text, /track: 2/);
+  assert.match(text, /voice: Kokoro:af_sky/);
+  assert.match(text, /Nou here\. One two three\./);
+
+  fs.rmSync(root, { recursive: true });
+});
+

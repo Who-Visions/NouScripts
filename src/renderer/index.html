@@ -36,6 +36,7 @@
           <button id="mode-prompt" type="button">Teleprompter</button>
         </div>
         <button id="toggle-sources" class="ghost" type="button" aria-pressed="true">Sources</button>
+        <button id="btn-export-clap" class="ghost" type="button" title="Export OpenClap interchange file (.clap)">Export .clap</button>
       </div>
     </header>
 
@@ -55,6 +56,11 @@
   <div class="prompter-bar">
     <span id="p-title"></span>
     <span class="p-help">Space play/pause · ↑↓ speed · Esc exit</span>
+    <div class="prompter-controls">
+      <button id="p-mirror" class="p-btn" type="button" title="Flip for reflection glass (Mirror mode)">Mirror</button>
+      <button id="p-font-dec" class="p-btn" type="button" title="Decrease font size">A-</button>
+      <button id="p-font-inc" class="p-btn" type="button" title="Increase font size">A+</button>
+    </div>
     <span id="p-speed"></span>
   </div>
   <div class="prompter-scroll" id="p-scroll"><div class="prompter-text" id="p-text"></div></div>

@@ -11,8 +11,8 @@ android {
         applicationId = "ai.nougen.scripts"
         minSdk = 26
         targetSdk = 35
-        versionCode = providers.gradleProperty("versionCode").orElse("1").get().toInt()
-        versionName = providers.gradleProperty("versionName").orElse("0.1.0").get()
+        versionCode = providers.gradleProperty("versionCode").orElse("2").get().toInt()
+        versionName = providers.gradleProperty("versionName").orElse("0.2.0").get()
     }
 
     buildTypes {

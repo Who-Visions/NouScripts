@@ -2,6 +2,7 @@
 const { app, BrowserWindow, ipcMain, shell, nativeTheme } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { execFile } = require('child_process');
 const S = require('./scripts');
 
 const capture = (process.argv.find((a) => a.startsWith('--capture=')) || '').split('=')[1];
@@ -18,6 +19,36 @@ function inRoot(p) {
   const root = path.resolve(S.storiesRoot());
   const abs = path.resolve(p);
   return abs === root || abs.startsWith(root + path.sep);
+}
+
+async function broadcastApproval(storyId, version, note) {
+  const text = `[APPROVED] Story "${storyId}" script v${version} approved by Dave${note ? ` ("${note}")` : ''}`;
+  try {
+    const res = await fetch('http://127.0.0.1:8766/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender: 'phoebus/nouscripts',
+        to: '@all',
+        content: text,
+      }),
+      signal: AbortSignal.timeout(1500),
+    });
+    if (res.ok) {
+      console.log('Broadcasted approval to MsgNode 8766');
+      return;
+    }
+  } catch {
+    // MsgNode not responding on 8766; fall back to CLI
+  }
+
+  const nougenBin = path.join(require('os').homedir(), 'The Observatory', 'NouGen', 'nougenshards', '.venv', 'bin', 'nougen');
+  if (fs.existsSync(nougenBin)) {
+    execFile(nougenBin, ['msg', '@all', text], (err) => {
+      if (err) console.log('nougen msg fallback skipped:', err.message);
+      else console.log('Broadcasted approval via nougen msg CLI');
+    });
+  }
 }
 
 ipcMain.handle('stories:list', () => ({
@@ -43,10 +74,23 @@ ipcMain.handle('script:load', (_e, { id, version }) => {
   };
 });
 
-ipcMain.handle('script:approve', (_e, { id, version, note }) => {
+ipcMain.handle('script:approve', async (_e, { id, version, note }) => {
   const story = storyById(id);
   if (!story) throw new Error('story not found');
-  return S.writeApproval(story.dir, version, note);
+  const result = S.writeApproval(story.dir, version, note);
+  try {
+    S.exportOpenClap(story.dir, version);
+  } catch (e) {
+    console.error('Failed to auto-export OpenClap on approval:', e.message);
+  }
+  broadcastApproval(story.id, version, note).catch(() => {});
+  return result;
+});
+
+ipcMain.handle('script:exportClap', (_e, { id, version }) => {
+  const story = storyById(id);
+  if (!story) throw new Error('story not found');
+  return S.exportOpenClap(story.dir, version);
 });
 
 ipcMain.handle('file:reveal', (_e, p) => { if (inRoot(p)) shell.showItemInFolder(p); });

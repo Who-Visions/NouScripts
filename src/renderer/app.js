@@ -1,6 +1,11 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
-const state = { stories: [], id: null, version: null, data: null, showSources: true, scrolling: null, speed: 40, query: '', filter: 'all', railCollapsed: localStorage.getItem('nou-rail-collapsed') === 'true' };
+const state = {
+  stories: [], id: null, version: null, data: null, showSources: true,
+  scrolling: null, speed: 40, query: '', filter: 'all',
+  railCollapsed: localStorage.getItem('nou-rail-collapsed') === 'true',
+  prompterMirror: false, prompterFontSize: 46,
+};
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -88,8 +93,8 @@ async function load() {
     [fmtTime(sc.seconds), 'estimated runtime'],
     [sc.words, 'spoken words'],
     [`${fmtTime(sc.onCameraSeconds)} · ${sc.avatarJobs} jobs`, 'on camera · OmniAvatar'],
-    [d.prevVersion ? `${changed} of ${sc.cues.length}` : `${sc.cues.length}`, d.prevVersion ? `cues changed since v${d.prevVersion}` : 'cues'],
-  ].map(([b, s]) => `<div class="stat"><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('');
+    [sc.flaggedCount ? `<span style="color:#ff8b8b">${sc.flaggedCount} flagged</span>` : '0 clichés', 'voice lint'],
+  ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${esc(s)}</span></div>`).join('');
 
   renderApproval(d);
 
@@ -97,9 +102,10 @@ async function load() {
   $('cues').innerHTML = sc.cues.map((c, i) => {
     const chg = d.diff[i];
     const badge = d.prevVersion && chg !== 'same' ? `<span class="chg ${chg}">${chg === 'new' ? 'new' : 'changed'}</span>` : '';
+    const flagBadge = c.flags && c.flags.length ? `<span class="chg cliche" title="AI cliché: ${esc(c.flags.join(', '))}">cliché: ${esc(c.flags.join(', '))}</span>` : '';
     return `<article class="cue ${c.onCamera ? 'cam' : 'vo'}">
       <div class="cue-head"><span class="cue-n">${c.n}</span><span class="kind">${c.onCamera ? 'ON CAM' : esc(c.kind)}</span>
-        ${c.hint ? `<span>${esc(c.hint)}</span>` : ''}${badge}
+        ${c.hint ? `<span>${esc(c.hint)}</span>` : ''}${badge}${flagBadge}
         <span class="cue-time">${c.words} words · ~${c.seconds}s</span></div>
       <p class="cue-text">${esc(c.text)}</p>
       ${c.source ? `<div class="cue-src">${inline(c.source)}</div>` : ''}
@@ -186,6 +192,34 @@ document.addEventListener('keydown', (e) => {
 
 $('mode-read').onclick = () => { if (!$('prompter').hidden) closePrompter(); };
 $('mode-prompt').onclick = () => state.data && openPrompter();
+$('p-mirror').onclick = () => {
+  state.prompterMirror = !state.prompterMirror;
+  $('p-mirror').classList.toggle('on', state.prompterMirror);
+  $('p-text').classList.toggle('mirrored', state.prompterMirror);
+};
+$('p-font-dec').onclick = () => {
+  state.prompterFontSize = Math.max(24, state.prompterFontSize - 4);
+  $('p-text').style.fontSize = `${state.prompterFontSize}px`;
+};
+$('p-font-inc').onclick = () => {
+  state.prompterFontSize = Math.min(80, state.prompterFontSize + 4);
+  $('p-text').style.fontSize = `${state.prompterFontSize}px`;
+};
+$('btn-export-clap').onclick = async () => {
+  if (!state.data) return;
+  const btn = $('btn-export-clap');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Exporting…';
+  try {
+    const res = await window.nou.exportClap(state.id, state.version);
+    btn.textContent = `Exported (${res.file})`;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+  } catch (err) {
+    btn.textContent = 'Export failed';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+  }
+};
 $('rail-toggle').onclick = () => setRailCollapsed(!state.railCollapsed);
 $('rail-expand').onclick = () => setRailCollapsed(false);
 $('story-search').addEventListener('input', (e) => { state.query = e.target.value; renderStories(); });
