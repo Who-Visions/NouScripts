@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "ai.nougen.scripts"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "ai.nougen.scripts"

@@ -60,6 +60,7 @@ private val Warning = Color(0xFFF4C86A)
 private data class ScriptVersion(val version: Int, val name: String, val body: String)
 private data class Cue(val number: Int, val kind: String, val hint: String, val text: String, val seconds: Int, val flags: List<String>)
 private data class Approval(val version: Int, val file: String, val sha256: String, val whenText: String)
+private data class LoadedStory(val name: String, val versions: List<ScriptVersion>, val savedJson: JSONObject?, val isCurrent: Boolean)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -127,19 +128,20 @@ private fun ScriptReviewScreen() {
                 val saved = approvalDoc?.let { file ->
                     context.contentResolver.openInputStream(file.uri)?.bufferedReader()?.use { JSONObject(it.readText()) }
                 }
-                Triple(dir.name ?: "Story folder", found, saved)
-            }
-        }
-        result.onSuccess { (name, found, saved) ->
-            folderName = name
-            versions = found
-            if (selectedVersion == null || found.none { it.version == selectedVersion }) selectedVersion = found.lastOrNull()?.version
-            approval = saved?.let {
-                Approval(it.optInt("version"), it.optString("file"), it.optString("sha256"), it.optString("approved_at_eastern", it.optString("approved_at")))
-            }
                 val approvedFile = dir.findFile(saved?.optString("file").orEmpty())
                 val approvedBytes = approvedFile?.let { file -> context.contentResolver.openInputStream(file.uri)?.use { it.readBytes() } }
-                approvalCurrent = approvedBytes != null && sha256(approvedBytes) == saved?.optString("sha256")
+                val isCurrent = approvedBytes != null && sha256(approvedBytes) == saved?.optString("sha256")
+                LoadedStory(dir.name ?: "Story folder", found, saved, isCurrent)
+            }
+        }
+        result.onSuccess { loaded ->
+            folderName = loaded.name
+            versions = loaded.versions
+            if (selectedVersion == null || loaded.versions.none { it.version == selectedVersion }) selectedVersion = loaded.versions.lastOrNull()?.version
+            approval = loaded.savedJson?.let {
+                Approval(it.optInt("version"), it.optString("file"), it.optString("sha256"), it.optString("approved_at_eastern", it.optString("approved_at")))
+            }
+            approvalCurrent = loaded.isCurrent
         }.onFailure { loadError = it.message ?: "Could not read the selected folder" }
         busy = false
     }
