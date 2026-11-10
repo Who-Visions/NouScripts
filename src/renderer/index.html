@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nou Scripts</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="dot"></span>Nou Scripts</div>
+    <div class="side-label">Stories</div>
+    <nav id="stories" class="stories" aria-label="Stories"></nav>
+    <div class="side-foot" id="root"></div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div class="top-left">
+        <h1 id="title">Loading…</h1>
+        <div class="meta" id="meta"></div>
+      </div>
+      <div class="top-right">
+        <div class="seg" id="versions" role="tablist" aria-label="Versions"></div>
+        <div class="seg" role="tablist" aria-label="View">
+          <button id="mode-read" class="on" type="button">Read</button>
+          <button id="mode-prompt" type="button">Teleprompter</button>
+        </div>
+        <button id="toggle-sources" class="ghost" type="button" aria-pressed="true">Sources</button>
+      </div>
+    </header>
+
+    <section class="stats" id="stats"></section>
+
+    <section id="approval" class="approval"></section>
+
+    <section id="cues" class="cues" aria-live="polite"></section>
+
+    <section id="notes" class="notes"></section>
+  </main>
+</div>
+
+<div id="prompter" class="prompter" hidden>
+  <div class="prompter-bar">
+    <span id="p-title"></span>
+    <span class="p-help">Space play/pause · ↑↓ speed · Esc exit</span>
+    <span id="p-speed"></span>
+  </div>
+  <div class="prompter-scroll" id="p-scroll"><div class="prompter-text" id="p-text"></div></div>
+  <div class="prompter-line" aria-hidden="true"></div>
+</div>
+
+<dialog id="approve-dialog">
+  <form method="dialog" class="dlg">
+    <h2 id="dlg-title">Approve for render</h2>
+    <p class="dlg-sub" id="dlg-sub"></p>
+    <label for="dlg-note">Note for the render step (optional)</label>
+    <textarea id="dlg-note" rows="3" placeholder="e.g. keep line 5 slow"></textarea>
+    <div class="dlg-row">
+      <button value="cancel" class="ghost" type="submit">Cancel</button>
+      <button value="ok" id="dlg-ok" class="primary" type="submit">Approve</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

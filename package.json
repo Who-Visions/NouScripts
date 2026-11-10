@@ -1,0 +1,15 @@
+{
+  "name": "nou-scripts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Desktop reader for Nou's NouGen News scripts: cue cards, runtime, version changes, sources, and an approval gate before anything renders.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "capture": "electron . --capture=out/capture.png"
+  },
+  "devDependencies": {
+    "electron": "45.2.1"
+  }
+}
