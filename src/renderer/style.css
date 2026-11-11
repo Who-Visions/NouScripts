@@ -203,3 +203,4 @@ dialog::backdrop { background: rgba(5, 3, 10, 0.7); }
 .cue.edited { border-color: rgba(232, 184, 109, 0.55); }
 .cliche-live[hidden] { display: none; }
 body.writing .approval { display: none; }
+.top-right button { white-space: nowrap; flex-shrink: 0; }
