@@ -504,6 +504,12 @@ function mediaKind(u) {
   return null;
 }
 
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', ndash: '–', mdash: '—', hellip: '…' };
+function decodeEntities(s) {
+  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => e[0] === '#'
+    ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : (ENTITIES[e.toLowerCase()] ?? m));
+}
+
 // Photos, videos, audio and embeds referenced by a page. Absolute URLs, de-duplicated, decorative noise dropped,
 // social preview images (og:/twitter:image) first because they are the page's own chosen picture.
 function extractMedia(html, baseUrl, limit = 40) {
@@ -515,7 +521,7 @@ function extractMedia(html, baseUrl, limit = 40) {
     const k = kind || mediaKind(u); if (!k) return;
     const key = u.replace(/[?#].*$/, '');
     if (seen.has(key)) return; seen.add(key);
-    out.push({ url: u, kind: k, label: String(label).replace(/\s+/g, ' ').trim().slice(0, 140), via: from });
+    out.push({ url: u, kind: k, label: decodeEntities(String(label)).replace(/\s+/g, ' ').trim().slice(0, 140), via: from });
   };
   const s = String(html || '');
   for (const m of s.matchAll(/<meta[^>]+(?:property|name)=["'](?:og:image|og:image:url|twitter:image)["'][^>]*>/gi)) add((/content=["']([^"']+)/i.exec(m[0]) || [])[1], 'image', 'preview image', 'og');

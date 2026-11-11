@@ -199,6 +199,7 @@ async function load() {
   }
 
   renderMedia();
+  renderFiles();
 
   $('notes').innerHTML = sc.notes.map((n) => {
     const items = n.lines.filter((l) => l.trim());
@@ -210,12 +211,45 @@ async function load() {
   }).join('');
 }
 
+// ── Icon rail + panel column ───────────────────────────────────────────────
+const PANEL_TITLES = { stories: 'Stories', media: 'Media sources', desk: 'Desk', sources: 'Sources' };
+state.panel = (() => { try { return localStorage.getItem('nou-panel') || 'stories'; } catch { return 'stories'; } })();
+function setPanel(name, toggle = true) {
+  // Clicking the open section's icon folds the panel away; any other icon opens that section.
+  if (toggle && name === state.panel && !state.railCollapsed) return setRailCollapsed(true);
+  state.panel = name;
+  try { localStorage.setItem('nou-panel', name); } catch { /* optional */ }
+  for (const b of document.querySelectorAll('.rail-btn')) b.classList.toggle('on', b.dataset.panel === name);
+  for (const p of document.querySelectorAll('.panel')) p.hidden = p.dataset.panel !== name;
+  $('panel-title').textContent = PANEL_TITLES[name];
+  for (const id of ['story-count']) $(id).hidden = name !== 'stories';
+  if (state.railCollapsed) setRailCollapsed(false);
+}
+for (const b of document.querySelectorAll('.rail-btn')) b.onclick = () => setPanel(b.dataset.panel);
+function badge(name, n) { const el = $(`badge-${name}`); el.hidden = !n; el.textContent = n > 99 ? '99+' : String(n || ''); }
+
+async function renderFiles() {
+  if (!state.id) return;
+  const { desk, sources } = await window.nou.files(state.id);
+  badge('desk', desk.length); badge('sources', sources.length);
+  const when = (t) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(t));
+  const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  $('desk').innerHTML = desk.length ? desk.map((f, i) => `<button type="button" class="file" data-i="${i}"><span class="file-kind k-${f.kind}">${f.kind}</span><span class="file-title">${esc(f.title)}</span><span class="file-sub">${esc(when(f.mtime))}</span></button>`).join('')
+    : '<p class="panel-empty">Research briefs and digests you run from the producer line land here.</p>';
+  $('sources').innerHTML = sources.length ? sources.map((f, i) => `<button type="button" class="file" data-i="${i}"><span class="file-kind">${esc(f.kind)}</span><span class="file-title">${esc(f.title)}</span><span class="file-sub">${esc(host(f.url) || f.name)}</span></button>`).join('')
+    : '<p class="panel-empty">Pages, transcripts and PDFs read for this story are saved here.</p>';
+  for (const b of $('desk').querySelectorAll('.file')) b.onclick = () => window.nou.open(desk[Number(b.dataset.i)].path);
+  for (const b of $('sources').querySelectorAll('.file')) b.onclick = () => window.nou.open(sources[Number(b.dataset.i)].path);
+}
+
 // Media sources found while fetching or digesting links: photos (downloaded), videos, audio, embeds.
 const media = { filter: 'all', items: [] };
 async function renderMedia() {
   if (!state.id) return;
   media.items = await window.nou.media(state.id);
   const el = $('media');
+  badge('media', media.items.length);
+  $('media-empty').hidden = media.items.length > 0;
   if (!media.items.length) { el.innerHTML = ''; return; }
   const counts = { all: media.items.length, image: 0, video: 0, audio: 0 };
   for (const m of media.items) if (counts[m.kind] !== undefined) counts[m.kind]++;
@@ -442,17 +476,17 @@ async function runLane(lane, text) {
       const found = r.done.reduce((a, d) => a + ((d.media && d.media.added) || 0), 0);
       setReply(`${r.done.length ? r.done.map((d) => `Digested ${d.kind} via ${d.lane}: ${d.what || d.title}`).join(' · ') + ` Saved in the story and attached.${found ? ` ${found} media source${found === 1 ? '' : 's'} added to the panel.` : ''}` : 'Nothing digested.'}${r.failed.length ? ` Couldn't read: ${r.failed.join('; ')}` : ''} (${r.seconds}s)`, r.done.length ? '' : 'err');
       if (r.done.length) replyOpen(r.done[r.done.length - 1].file);
-      renderMedia();
+      renderMedia(); renderFiles();
     } else if (lane === 'fetch') {
       setReply('Reading links…', 'busy');
       const r = await window.nou.fetchPages({ id: state.id, text });
       addChips(r.kept);
-      renderMedia();
+      renderMedia(); renderFiles();
       setReply(`${r.kept.length ? `Saved and attached: ${r.kept.map((k) => `${k.name} (${k.kind}, ${Math.round(k.chars / 1000)}k chars)`).join(', ')}.` : 'Nothing saved.'}${r.failed.length ? ` Couldn't read: ${r.failed.join('; ')}` : ''}`, r.kept.length ? '' : 'err');
     } else if (lane === 'research') {
       setReply(`Researching with ${modelName}: planning searches…`, 'busy');
       const r = await window.nou.research({ id: state.id, version: state.version, question: text, cues: scriptCues(), model });
-      addChips([r.brief]);
+      addChips([r.brief]); renderFiles();
       setReply(`${r.answer} (${r.sources} sources via ${r.lanes.join(' + ')}, ${r.seconds}s. Brief saved and attached.)`);
       replyOpen(r.file);
     }
@@ -502,6 +536,7 @@ $('ask-form').onsubmit = async (e) => {
   } finally { ask.busy = false; $('ask-send').disabled = false; $('ask-digest').disabled = false; }
 };
 
+{ const keep = state.railCollapsed; setPanel(state.panel, false); if (keep) setRailCollapsed(true); }
 setRailCollapsed(state.railCollapsed || new URLSearchParams(location.search).get('rail') === 'collapsed');
 // A file change while you type would re-render the editors and lose your words; refresh the list only.
 window.nou.onChange(() => (state.writing ? window.nou.list().then(({ stories }) => { state.stories = stories; renderStories(); }) : refresh(true)));

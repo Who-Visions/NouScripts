@@ -248,6 +248,24 @@ async function collectMedia(story, url, item) {
   return { added: found.length, saved };
 }
 
+// Desk (research briefs, digests) and Sources (saved pages and transcripts) for the left panel.
+ipcMain.handle('story:files', (_e, { id }) => {
+  const story = storyById(id);
+  if (!story) return { desk: [], sources: [] };
+  const first = (f, n = 2) => { try { return fs.readFileSync(f, 'utf8').split('\n').slice(0, n); } catch { return []; } };
+  const stat = (f) => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
+  const desk = fs.readdirSync(story.dir).filter((f) => /^(research|digest)_.*\.md$/.test(f)).map((f) => {
+    const p = path.join(story.dir, f);
+    return { name: f, path: p, kind: f.startsWith('research') ? 'research' : 'digest', title: (first(p, 1)[0] || f).replace(/^#\s*(Research|Digest):\s*/, ''), mtime: stat(p) };
+  }).sort((a, b) => b.mtime - a.mtime);
+  const sdir = path.join(story.dir, 'sources');
+  const sources = fs.existsSync(sdir) ? fs.readdirSync(sdir).filter((f) => /\.(txt|md|html|pdf)$/.test(f)).map((f) => {
+    const p = path.join(sdir, f); const [title, url] = /\.txt$/.test(f) ? first(p, 2) : [f, ''];
+    return { name: f, path: p, title: (title || f).slice(0, 160), url: /^https?:/.test(url || '') ? url : '', kind: f.split(/[_.]/)[0], mtime: stat(p) };
+  }).sort((a, b) => b.mtime - a.mtime) : [];
+  return { desk, sources };
+});
+
 ipcMain.handle('media:list', (_e, { id }) => {
   const story = storyById(id);
   if (!story) return [];
