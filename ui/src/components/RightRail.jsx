@@ -1,5 +1,6 @@
 // Right rail: the approval gate (with its dialog) and the script's notes as accordions.
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fmtTime, Inline } from '@/lib/text';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,7 @@ function Notes({ notes }) {
         const items = n.lines.filter((l) => l.trim());
         return (
           <AccordionItem key={n.heading} value={n.heading} className="border-border">
-            <AccordionTrigger className="py-2.5 text-[13px] font-semibold hover:no-underline">{n.heading}</AccordionTrigger>
+            <AccordionTrigger className="py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[1px] text-muted-foreground hover:text-foreground hover:no-underline">{n.heading}</AccordionTrigger>
             <AccordionContent className="pb-3 text-[13px] leading-normal text-muted-foreground">
               <ul className="m-0 list-disc space-y-1.5 pl-4">
                 {items.map((l, i) => /^\s*[-*]\s/.test(l)
@@ -52,18 +53,29 @@ export default function RightRail({ nou }) {
     try { await nou.approve(note.trim()); setOpen(false); setNote(''); } finally { setBusy(false); }
   };
   return (
-    <aside className="min-h-0 overflow-auto border-l bg-[#141415] px-4 pt-4 pb-10" aria-label="Approval and notes">
+    <aside className="flex min-h-0 flex-col border-l bg-[#141415]" aria-label="Approval and notes">
+      <div className="flex h-10 flex-none items-center gap-2 border-b px-4 text-[10px] uppercase tracking-[1.2px] text-faint">
+        <span className={cn('size-1.5 rounded-full', st.tone === 'ok' ? 'bg-ok' : 'bg-gold')} />Approval
+        <span className="ml-auto font-mono tabular-nums normal-case tracking-normal">v{d.version}</span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto px-4 pt-4 pb-10">
       {!nou.writing && (
-        <section className={cn('flex flex-col gap-2.5', st.tone && 'rounded-lg border px-4 py-3',
+        <section className={cn('flex flex-col gap-3 rounded-lg border border-white/[0.08] bg-[#111113] p-4',
           st.tone === 'ok' && 'border-ok/35 bg-ok/10', st.tone === 'stale' && 'border-gold/35 bg-gold/10')}>
           <div>
             <div className="text-sm font-semibold tracking-tight">{st.what}</div>
             <div className="mt-0.5 text-xs leading-normal text-muted-foreground">{st.why}</div>
           </div>
-          {st.can && <Button className="w-full font-bold" onClick={() => setOpen(true)}>Approve v{d.version}</Button>}
+          {st.can && (
+            <div>
+              <Button className="h-9 w-full gap-2 text-[13px] font-semibold" onClick={() => setOpen(true)}><Check className="size-4" />Approve v{d.version}</Button>
+              <p className="mt-2 text-center font-mono text-[10px] text-faint">Records the exact file · voicing and render follow</p>
+            </div>
+          )}
         </section>
       )}
       <Notes notes={sc.notes} />
+      </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="border-border bg-card sm:max-w-md">
           <DialogHeader>

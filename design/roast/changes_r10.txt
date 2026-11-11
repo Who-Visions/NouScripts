@@ -1,0 +1,2 @@
+- Round 9 fixes applied: quieter cue header (white/6% divider, 11px); broadcast table header row is monospace on #121214 with a hairline; the approve caption is 10px monospace with more space above it.
+- Alignment unchanged and exact.

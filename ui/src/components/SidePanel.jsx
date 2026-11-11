@@ -155,8 +155,8 @@ function FileList({ items, empty, sub }) {
 export default function SidePanel({ nou }) {
   if (nou.railCollapsed) return <div aria-hidden="true" />;
   return (
-    <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r bg-sidebar px-3 pt-3.5 pb-3.5">
-      <div className="flex items-center justify-between px-2 pb-2">
+    <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r bg-sidebar">
+      <div className="flex h-10 flex-none items-center justify-between border-b pr-2 pl-5">
         <span className="text-[10px] uppercase tracking-[1.2px] text-faint">{TITLES[nou.panel]}</span>
         <span className="flex items-center gap-1">
           {nou.panel === 'stories' && <span className="text-[11px] tabular-nums text-faint">{nou.stories.length}</span>}
@@ -165,12 +165,14 @@ export default function SidePanel({ nou }) {
           </Button>
         </span>
       </div>
+      <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 pb-3">
       {nou.panel === 'stories' && <Stories nou={nou} />}
       {nou.panel === 'media' && <Media nou={nou} />}
       {nou.panel === 'desk' && <FileList items={nou.files.desk} sub={(f) => eastern(f.mtime)}
         empty="Research briefs and digests you run from the producer line land here." />}
       {nou.panel === 'sources' && <FileList items={nou.files.sources} sub={(f) => host(f.url) || f.name}
         empty="Pages, transcripts and PDFs read for this story are saved here." />}
+      </div>
     </aside>
   );
 }

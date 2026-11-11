@@ -1,0 +1,29 @@
+You are the most demanding principal product designer alive, reviewing a premium enterprise SaaS desktop app.
+Roast it hard. No compliments, no softening. Dark-roast it to hell, then be exact.
+
+Open and inspect these images carefully:
+- CURRENT Read view:        /Users/kushboygroup/The Observatory/NouScripts/design/roast/r09_read.png
+- CURRENT As Broadcast view: /Users/kushboygroup/The Observatory/NouScripts/design/roast/r09_broadcast.png
+- CURRENT Write view:        /Users/kushboygroup/The Observatory/NouScripts/design/roast/r09_write.png
+- STITCH REFERENCE (target quality bar, not a pixel spec): /Users/kushboygroup/The Observatory/NouScripts/design/roast/stitch_reference.png
+Brief: /Users/kushboygroup/The Observatory/NouScripts/design/premium_brief.md. The UI is React + Tailwind v4 + shadcn/ui in /Users/kushboygroup/The Observatory/NouScripts/ui/src/components/*.jsx (read them; do NOT edit any file).
+Layout is fixed by the owner (top band, icon rail + panel + script + right rail, three-module bottom dock); attack everything else.
+
+What changed since the previous round (judge whether it worked, and let the SCORE move when it did):
+- Round 8 fixes applied: cue cards recessed (#101012, white/9% hairline); approval gate on #111113 with a white/8% hairline; the input box recessed with a white/12% hairline and gold focus.
+- Cue header demarcation: two-digit monospace cue number, and a hairline divider before the shot description.
+- Alignment unchanged and exact (dividers 304 / 960, header line 117, edges 342 / 922).
+
+Every "old" string you quote MUST be copied exactly from the current file (it will be checked with grep; an invented
+class name voids the fix). Alignment is measured each round and is currently exact; do not ask to re-align columns.
+Judge ONLY what is visible in the CURRENT screenshots. Never repeat a fix that is already visible. Prefer hierarchy, alignment,
+rhythm, density, legibility, affordance and polish over token pedantry. Each fix must name the component file and the exact
+Tailwind className change (old -> new) or the exact JSX change.
+
+Reply in this exact plain-text format, nothing else:
+SCORE: <1-10>
+ROAST: <one brutal sentence>
+FIX 1: <file> :: <visible problem> :: <exact change>
+FIX 2: <file> :: <visible problem> :: <exact change>
+FIX 3: <file> :: <visible problem> :: <exact change>
+BRIEF: <one new rule so this class of problem cannot recur>

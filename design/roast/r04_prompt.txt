@@ -1,0 +1,22 @@
+You are the most demanding principal product designer alive, reviewing a premium enterprise SaaS desktop app.
+Roast it hard. No compliments, no softening. Dark-roast it to hell, then be exact.
+
+Open and inspect these images carefully:
+- CURRENT Read view:        /Users/kushboygroup/The Observatory/NouScripts/design/roast/r04_read.png
+- CURRENT As Broadcast view: /Users/kushboygroup/The Observatory/NouScripts/design/roast/r04_broadcast.png
+- CURRENT Write view:        /Users/kushboygroup/The Observatory/NouScripts/design/roast/r04_write.png
+- STITCH REFERENCE (target quality bar, not a pixel spec): /Users/kushboygroup/The Observatory/NouScripts/design/roast/stitch_reference.png
+Brief: /Users/kushboygroup/The Observatory/NouScripts/design/premium_brief.md. The UI is React + Tailwind v4 + shadcn/ui in /Users/kushboygroup/The Observatory/NouScripts/ui/src/components/*.jsx (read them; do NOT edit any file).
+Layout is fixed by the owner (top band, icon rail + panel + script + right rail, three-module bottom dock); attack everything else.
+
+Judge ONLY what is visible in the CURRENT screenshots. Never repeat a fix that is already visible. Prefer hierarchy, alignment,
+rhythm, density, legibility, affordance and polish over token pedantry. Each fix must name the component file and the exact
+Tailwind className change (old -> new) or the exact JSX change.
+
+Reply in this exact plain-text format, nothing else:
+SCORE: <1-10>
+ROAST: <one brutal sentence>
+FIX 1: <file> :: <visible problem> :: <exact change>
+FIX 2: <file> :: <visible problem> :: <exact change>
+FIX 3: <file> :: <visible problem> :: <exact change>
+BRIEF: <one new rule so this class of problem cannot recur>

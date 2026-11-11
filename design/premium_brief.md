@@ -1,4 +1,4 @@
-# Nou Scripts design brief (v2, after 10 review rounds)
+# Nou Scripts design brief (v3, after 10 roast rounds on the React app)
 
 Target: Enterprise SaaS, premium. Think Linear, Vercel, Stripe Dashboard, Height: calm, dense, exact.
 
@@ -25,7 +25,7 @@ Rules:
 12. Accent borders and fills appear only on focus, selection or a real state; resting containers are neutral.
 13. Status is coloured text (gold = needs review, green = approved), never a boxed pill.
 14. Secondary triggers (Digest, Send, Export, toggles) rest border-neutral and surface-neutral; colour arrives on hover or activation.
-15. Cards are separated by surface steps, not outlines; an outline appears only on hover or focus.
+15. (revised round 2) Decision surfaces (cue cards, the approval gate, telemetry) sit on their own surface with a visible hairline border; hover only strengthens it.
 16. Segment, change and lint tags are plain coloured uppercase text (10 px, tracked), never boxes.
 17. Radii come only from tokens: --radius-surface (10 px) and --radius-control (6 px).
 18. Every scrolling column ends with at least 24 px of bottom padding; controls in a row share one vertical centre.
@@ -33,3 +33,15 @@ Rules:
 20. Rail lists indent 16 px with at least 6 px between items; a selected segment reads at full text contrast.
 21. Segmented controls keep a uniform 3 px inner track inset; buttons never touch the track edge.
 22. Nothing may widen the window: every band is pinned to the viewport and long titles truncate with an ellipsis. Check with a DOM overflow scan, not only by eye.
+23. The one filled gold button is Approve; it carries an icon and a one-line consequence under it. Everything else is outline or ghost.
+24. Metadata (telemetry, rundown, time codes) is monospace, faint and tabular; prose is never monospace.
+25. The bottom dock is one slim row (about 60 px); explanations live in tooltips and menus, never as paragraphs in the dock.
+26. Every cue header names its shot (first VIDEO line) when the script has one.
+25. The bottom dock is one slim row (about 60 px); explanations live in tooltips and menus, never as paragraphs in the dock.
+26. Every cue header names its shot (first VIDEO line) when the script has one.
+27. Editors edit in place: no box inside a card; the text field is borderless until focus, with a gold caret.
+28. Header rows never wrap: fixed facts (timing, counts) are nowrap; descriptive text takes the remaining space and truncates. No duplicate facts on one row.
+29. One column grid for all bands (rail+panel | script | right rail): vertical dividers run unbroken top to bottom, every column header is 40 px so its line runs straight across, and titles, cards and the input share the script gutter. Verified by design/roast/align_probe.js every round.
+30. Working surfaces (cards, the gate, the input) are recessed tones (#101012 to #111113) with white 8-12% hairlines; chrome stays on #121213 to #141415.
+31. Studio metadata (shot notes, table headers, consequence captions) is 10-11 px monospace and faint; spoken prose and the one primary action dominate.
+32. No informal drafting motifs: dividers are solid hairlines, never dashed; section headings in rails are monospace labels, not FAQ-style toggles.
