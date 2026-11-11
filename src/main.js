@@ -417,7 +417,9 @@ function createWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e) => e.preventDefault());
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'), { query: { mode: captureMode, rail: captureRail } });
+  // The React renderer (ui/, built by `npm run build:ui`) when present; the vanilla renderer otherwise.
+  const built = path.join(__dirname, 'renderer-dist', 'index.html');
+  win.loadFile(fs.existsSync(built) ? built : path.join(__dirname, 'renderer', 'index.html'), { query: { mode: captureMode, rail: captureRail } });
   if (capture) {
     win.webContents.once('did-finish-load', () => setTimeout(async () => {
       const img = await win.webContents.capturePage();

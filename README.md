@@ -111,3 +111,19 @@ files or PDFs. A video or audio link keeps its thumbnail. Photos are downloaded 
 (icons, trackers and anything under 6 KB skipped); everything is listed in `media.json`. The **Media sources** panel
 in the right rail filters by type, and each item can be opened, sent to Digest (video, audio, PDF), attached
 (downloaded photos), or copied as a `VIDEO:` line for a cue. Check the rights to any third-party picture before air.
+
+## React renderer (ui/)
+
+The window is a React 19 app built with Vite, Tailwind v4 and shadcn/ui (`ui/`, built to `src/renderer-dist/`,
+which `src/main.js` loads; the old vanilla renderer in `src/renderer/` stays as a fallback when no build exists).
+`npm start` builds first. `ui/src/lib/useNou.js` holds all state and talks to the main process only through
+`window.nou`; the main process and its IPC did not change.
+
+Layout: top band (hamburger menu with story actions and shortcuts, title with a version dropdown, the four view
+modes, a View menu for Changes / Source notes / Side panel, then telemetry); middle (icon rail, panel column with
+Stories, Media sources, Desk and Sources grouped in collapsible sections, the script, and a right rail with the
+approval gate and notes as accordions); bottom dock (lane dropdown and model, the producer input with + and
+Digest, the last reply).
+
+Component drafts were requested from free NouGenOpen lanes (`design/draft_component.py`, `design/draft_all.sh`,
+contract in `design/react_spec.md`); `IconRail.jsx` was kept from a draft, the rest were rewritten in review.

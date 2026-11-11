@@ -7,3 +7,4 @@ android/local.properties
 android/**/build/
 __pycache__/
 *.pyc
+src/renderer-dist/
