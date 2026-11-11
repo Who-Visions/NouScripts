@@ -214,7 +214,7 @@ body.writing .approval { display: none; }
 .topbar h1 { font-size: 19px; letter-spacing: -.3px; }
 .topbar .meta { margin-top: 1px; font-size: 11px; }
 .telemetry { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.telemetry .stat { display: flex; align-items: baseline; gap: 7px; padding: 4px 10px; border-radius: 999px; background: var(--panel); }
+.telemetry .stat { display: flex; align-items: baseline; gap: 7px; padding: 4px 10px; border-radius: 4px; background: var(--panel); border: 1px solid var(--line); }
 .telemetry .stat b { display: inline; font-size: 13px; letter-spacing: 0; }
 .telemetry .stat span { font-size: 11px; }
 .app { grid-template-columns: 260px minmax(0, 1fr) 320px; height: auto; min-height: 0; }
@@ -244,7 +244,7 @@ body.writing .approval { display: none; }
 .send:disabled { opacity: .45; cursor: default; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips:empty { display: none; }
-.chip { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; padding: 2px 4px 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--text); font-size: 11px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; padding: 2px 4px 2px 9px; border-radius: 4px; background: var(--accent-soft); color: var(--text); font-size: 11px; }
 .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip button { border: 0; background: transparent; color: var(--muted); padding: 0 4px; font-size: 13px; }
 .dock-reply.busy .dock-sub { color: var(--gold); }
@@ -373,7 +373,7 @@ table.ab { width: 100%; border-collapse: collapse; table-layout: fixed; backgrou
 .m-acts button { border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 10px; padding: 1px 6px; border-radius: 4px; }
 .m-acts button:hover { color: var(--text); border-color: var(--line-hover); }
 .m-face { position: relative; }
-.m-play { position: absolute; inset: auto auto 6px 6px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: rgba(0,0,0,.65); color: #fff; font-size: 10px; }
+.m-play { position: absolute; inset: auto auto 6px 6px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 4px; background: rgba(0,0,0,.65); color: #fff; font-size: 10px; }
 
 /* ── Icon rail + panel column (the left side): sections on a 56 px rail, content in a 248 px panel. ── */
 .app { grid-template-columns: 56px 248px minmax(0, 1fr) 320px; }
