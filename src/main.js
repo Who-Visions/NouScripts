@@ -44,7 +44,7 @@ async function broadcastApproval(storyId, version, note) {
 
   const nougenBin = path.join(require('os').homedir(), 'The Observatory', 'NouGen', 'nougenshards', '.venv', 'bin', 'nougen');
   if (fs.existsSync(nougenBin)) {
-    execFile(nougenBin, ['msg', '@all', text], (err) => {
+    execFile(nougenBin, ['msg', '--to', '@all', text], (err) => {
       if (err) console.log('nougen msg fallback skipped:', err.message);
       else console.log('Broadcasted approval via nougen msg CLI');
     });
