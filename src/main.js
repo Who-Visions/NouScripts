@@ -1,6 +1,6 @@
 'use strict';
 const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain, Notification, screen } = require('electron');
-const { windowSize } = require('./window-size');
+const { windowSize, refit } = require('./window-size');
 const { AsyncLocalStorage } = require('async_hooks');
 const { autoUpdater } = require('electron');
 const { createUpdater } = require('./updater');
@@ -506,6 +506,17 @@ const updater = createUpdater({
 ipcMain.handle('updater:status', () => updater.status());
 ipcMain.handle('updater:check', () => updater.check());
 ipcMain.handle('updater:install', () => updater.install());
+
+// A display was plugged in, unplugged, or changed resolution/scale: re-fit the window to the usable area of the
+// display it is on, so it does not stay larger than the screen. Electron fires these on the screen module.
+function refitToDisplay() {
+  if (!win || win.isDestroyed() || win.isFullScreen() || win.isMaximized()) return;
+  const display = screen.getDisplayMatching(win.getBounds());
+  const size = refit(win.getBounds(), display.workAreaSize);
+  if (size) win.setSize(size.width, size.height);
+}
+screen.on('display-metrics-changed', refitToDisplay);
+screen.on('display-removed', refitToDisplay);
 
 app.whenReady().then(() => { createWindow(); watchStories(); updater.start(); });
 app.on('window-all-closed', () => { if (watcher) watcher.close(); app.quit(); });
