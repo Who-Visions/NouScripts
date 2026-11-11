@@ -86,7 +86,7 @@ export default function TopBar({ nou }) {
                   ))}
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
-              <DropdownMenuItem disabled={!d} onSelect={() => window.nou.open(d.path)}><FileText className="size-4" />Open script file</DropdownMenuItem>
+              <DropdownMenuItem disabled={!d} onSelect={() => nou.openFile(d.path)}><FileText className="size-4" />Open script file</DropdownMenuItem>
               <DropdownMenuItem disabled={!d} onSelect={() => window.nou.reveal(d.path)}><FolderOpen className="size-4" />Show in Finder</DropdownMenuItem>
               <DropdownMenuItem disabled={!d} onSelect={exportClap}><FileDown className="size-4" />Export .clap</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => window.nou.updater.check()} disabled={upd.state === 'disabled' || upd.state === 'checking' || upd.state === 'downloading'}>
