@@ -323,7 +323,7 @@ function createWindow() {
   nativeTheme.themeSource = 'dark';
   win = new BrowserWindow({
     width: 1280, height: 860, minWidth: 900, minHeight: 600,
-    title: 'Nou Scripts', backgroundColor: '#0b0814', show: !capture,
+    title: 'Nou Scripts', backgroundColor: '#121213', show: !capture,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

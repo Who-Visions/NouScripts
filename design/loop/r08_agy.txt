@@ -1,0 +1,5 @@
+SCORE: 8/10
+FIX 1: In the dock middle module, the textarea placeholder text sits visually lower than the vertical centers of the "+" button and "Digest" button due to internal padding; fix with `.input-row textarea { padding: 4px 2px; }`
+FIX 2: In the right rail, the top heading "Not approved yet" sits right at the top edge without a clear baseline relationship or section heading style, and the text below it feels disconnected from the action; fix with `.rail-right .approval h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }`
+FIX 3: In the broadcast table header row (`table.ab`), the column labels ("TIME CODE", "SEGMENT", "VIDEO", "AUDIO") have heavy bottom padding and misalign with the tight 10 px uppercase styling across the rest of the chrome; fix with `.ab th { padding: 7px 12px; }`
+BRIEF: All flex rows containing controls and textual inputs must explicitly vertically center align child elements and match input line-heights to button heights to prevent baseline drift.

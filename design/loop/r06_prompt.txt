@@ -1,0 +1,10 @@
+You are a principal product designer reviewing a desktop app against a design brief. Look at the two screenshots
+(open the image files and inspect them carefully): /Users/kushboygroup/The Observatory/NouScripts/design/loop/r06_read.png and /Users/kushboygroup/The Observatory/NouScripts/design/loop/r06_broadcast.png.
+The brief is /Users/kushboygroup/The Observatory/NouScripts/design/premium_brief.md. The CSS is /Users/kushboygroup/The Observatory/NouScripts/src/renderer/style.css (read-only for you: do NOT edit any file).
+
+Reply in this exact plain-text format, nothing else:
+SCORE: <1-10 against the brief>
+FIX 1: <one concrete visual problem you can SEE, where it is, and the exact CSS change (selector + property: value)>
+FIX 2: ...
+FIX 3: ...
+BRIEF: <one new rule to add to the brief so this class of problem cannot recur>

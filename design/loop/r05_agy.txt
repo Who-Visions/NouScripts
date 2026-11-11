@@ -1,0 +1,12 @@
+SCORE: 7/10
+
+FIX 1: In the left rail, the active story card has an outline border and an off-brand 10px radius violating the card surface and 6/10 radius rules, while using an ungrounded violet tone. Change `.story.on` in `style.css` to remove the outline and stick to surface steps:
+`.story.on { background: var(--panel-2); border-color: transparent; }`
+
+FIX 2: Inside the cue headers and active story card, tags like "ON CAM", "VO", and "v5 needs review" are rendered as boxed pill containers instead of plain colored text (violating Rules 10 and 13). Change `.kind` to eliminate pill boxing:
+`.kind { background: transparent; padding: 0; }`
+
+FIX 3: The middle bottom chat prompt uses a rounded button for Digest and a circular pill button for Send (arrow up) with inconsistent border radii instead of the strict 6px control radius. Change the send button selector to match standard controls:
+`.chat-send, button:has(.lucide-arrow-up), .prompt-send { border-radius: 6px; }`
+
+BRIEF: State and metadata badges must never render background fills or outline boxes; all status, role, and category indicators must be plain colored text.

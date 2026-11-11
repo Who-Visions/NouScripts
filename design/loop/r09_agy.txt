@@ -1,0 +1,5 @@
+SCORE: 8.5/10
+FIX 1: In the left rail, the filter segment control (.filter-row) has excessive vertical padding around its buttons and the active button (.filter.on) lacks contrast against the dark background. Selector: .filter-row { padding: 2px; } .filter.on { background: var(--panel-2); color: #fff; font-weight: 500; }
+FIX 2: In the right rail, the secondary bullet points under "What changed in v5" and "Still left out" are visually heavy and unindented relative to the section headers, crowding the 320 px rail. Selector: .rail-right .notes ul { padding-left: 16px; margin: 6px 0 14px; } .rail-right .notes li { color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+FIX 3: In the bottom dock, the left module ("PRODUCER LINE") has its subtext ("Suggestions open in Write. Nothing saves until you do.") sitting too close to the dropdown selector without a clear surface division. Selector: .dock-lane select { margin-bottom: 10px; } .dock-sub { line-height: 1.5; }
+BRIEF: Rule 20: Secondary text blocks and lists in side rails must maintain an explicit 16 px list indentation and a minimum 6 px item spacing to ensure visual separation from dense section headers.

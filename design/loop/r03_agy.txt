@@ -1,0 +1,5 @@
+SCORE: 7/10
+FIX 1: Dock center input border has an unapproved warm gold border out of state, competing with the Approve button accent budget. In the bottom dock middle module, change `.dock-input` from border-color: rgba(232, 184, 109, .35) to border-color: var(--line).
+FIX 2: Left rail active story item still shows an obsolete rounded-box 'pill' badge with an extra border and unaligned radius around 'needs review'. In the left rail story list, change `.story .pill` to border: 0; background: transparent; padding: 0; color: var(--gold);.
+FIX 3: Left rail path footer at the bottom wraps awkwardly and breaks across multiple lines without breathing room. In the left rail footer, change `.side-foot` to white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;.
+BRIEF: Rule 12: Accent surfaces and borders are strictly conditional on active interaction (selection or focus); resting input containers and secondary modules must never use accent hues in their default border or background states.
