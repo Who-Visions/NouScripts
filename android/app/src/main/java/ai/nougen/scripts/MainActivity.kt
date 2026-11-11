@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -125,6 +126,7 @@ private fun ScriptReviewScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("nou-scripts", 0) }
+    val reviewListState = rememberLazyListState()
     var folderUri by remember { mutableStateOf(prefs.getString("storyFolder", null)?.let { Uri.parse(it) }) }
     var folderName by remember { mutableStateOf("Choose a story folder") }
     var versions by remember { mutableStateOf<List<ScriptVersion>>(emptyList()) }
@@ -272,8 +274,10 @@ private fun ScriptReviewScreen() {
 
     Surface(modifier = Modifier.fillMaxSize(), color = Bg) {
         LazyColumn(
+            state = reviewListState,
             modifier = Modifier.fillMaxSize().safeDrawingPadding(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -394,11 +398,15 @@ private fun ScriptReviewScreen() {
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                     Button(
                         onClick = { askApprove = true },
                         enabled = !approvedSelected && !busy,
-                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp),
+                            modifier = Modifier.weight(1f).defaultMinSize(minWidth = 136.dp, minHeight = 48.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AccentGold,
@@ -411,14 +419,13 @@ private fun ScriptReviewScreen() {
                     }
                     OutlinedButton(
                         onClick = { inPrompter = true },
-                        modifier = Modifier.weight(1f).defaultMinSize(minHeight = 48.dp),
+                            modifier = Modifier.weight(1f).defaultMinSize(minWidth = 136.dp, minHeight = 48.dp),
                         shape = RoundedCornerShape(8.dp),
                         border = BorderStroke(1.dp, Line)
                     ) {
                         Text("Teleprompter", color = TextColor, fontWeight = FontWeight.SemiBold)
                     }
                 }
-                Spacer(Modifier.height(10.dp))
             } else if (!busy && loadError == null) {
                 Spacer(Modifier.height(18.dp))
                 Text(
