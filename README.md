@@ -90,3 +90,15 @@ Copy it into a story folder as `script_v1.md`. What it carries:
 | Verification | the `*italic*` line under a cue is its source note |
 
 **As Broadcast** in the app shows any script in this two-column form with running time code.
+
+## Producer line lanes
+
+The bottom input has three lanes and a **Digest** button. Model calls use `NVIDIA_API_KEY` (Nemotron 3 Ultra by
+default); search uses `EXA_API_KEY_2`/`_3`, then `TAVILY_API_KEY`. Keys are read from the Keymaker in the main process only.
+
+- **Edit**: suggestions open in Write; nothing saves until you do.
+- **Web fetch**: paste links; each is read and saved to the story's `sources/`, then attached.
+- **Research**: a question becomes 3-4 searches; up to 10 sources are saved and a cited `research_*.md` brief is written.
+- **Digest**: works out what each link is at runtime (`tools/digest_resolve.py`): YouTube captions, audio or video
+  transcribed locally with faster-whisper (no paid API), PDFs, or web pages. Writes `digest_*.md` with timestamps.
+  Needs `~/.nougen/venvs/digest` (`faster-whisper yt-dlp youtube-transcript-api pypdf`); without it, links are read as pages.

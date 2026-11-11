@@ -207,3 +207,15 @@ test('editing a templated cue keeps its VIDEO/SUPER lines and puts the words bef
   assert.strictEqual(p.cues[1].fields.length, 2);
   assert.strictEqual(p.cues[1].text, 'Lead-in line.');
 });
+
+test('research lanes: links, file names, search plans and digest prompts', () => {
+  assert.deepStrictEqual(S.extractUrls('see https://a.com/x, and (https://youtu.be/abcdefghijk). again https://a.com/x'), ['https://a.com/x', 'https://youtu.be/abcdefghijk']);
+  assert.strictEqual(S.sourceFileName('https://www.metr.org/blog/2026-11-05-x/', 'web'), 'web_metr-org_blog-2026-11-05-x.txt');
+  assert.deepStrictEqual(S.parsePlan('<think>x</think>["a", " b ", 3, ""]', 'q'), ['a', 'b']);
+  assert.deepStrictEqual(S.parsePlan('no plan', 'fallback q'), ['fallback q']);
+  const m = S.digestMessages({ title: 'T', url: 'u', kind: 'youtube', lane: 'captions', text: '[00:00:01] hi' }, [{ n: 1, text: 'Line.' }]);
+  assert.match(m[0].content, /timestamps/);
+  assert.match(m[1].content, /Kind: youtube \(captions\)/);
+  const b = S.researchBriefMessages('Q?', [{ url: 'https://x', title: 'X', text: 'fact' }]);
+  assert.match(b[1].content, /\[1\] X\nhttps:\/\/x\nfact/);
+});

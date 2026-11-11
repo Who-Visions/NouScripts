@@ -64,6 +64,11 @@
   <footer class="dock">
     <section class="dock-mod dock-lane" aria-label="Model lane">
       <div class="dock-label">Producer line</div>
+      <div class="lane-seg" role="tablist" aria-label="Lane">
+        <button type="button" class="on" data-lane="edit" title="Suggest edits to the script">Edit</button>
+        <button type="button" data-lane="fetch" title="Read links into sources and attach them">Web fetch</button>
+        <button type="button" data-lane="research" title="Search the web and write a cited brief">Research</button>
+      </div>
       <select id="ask-model" aria-label="Model">
         <option value="nvidia/nemotron-3-ultra-550b-a55b">Nemotron 3 Ultra · NVIDIA</option>
         <option value="mistralai/mistral-large-4-1t-a52b">Mistral Large 4 · NVIDIA</option>
@@ -74,7 +79,8 @@
       <div class="chips" id="ask-chips"></div>
       <div class="input-row">
         <button id="ask-attach" class="attach" type="button" title="Attach files (sources, notes, transcripts)" aria-label="Attach files">+</button>
-        <textarea id="ask-text" rows="1" placeholder="Tell Nou what to change… e.g. tighten line 5, make the close land harder" aria-label="Instruction"></textarea>
+        <textarea id="ask-text" rows="1" placeholder="Tell Nou what to change… e.g. tighten line 5" aria-label="Instruction"></textarea>
+        <button id="ask-digest" class="digest" type="button" title="Digest the links in the box: page, PDF, YouTube, audio or video">Digest</button>
         <button id="ask-send" class="send" type="submit" aria-label="Send" title="Send (Enter)">↑</button>
       </div>
     </form>
