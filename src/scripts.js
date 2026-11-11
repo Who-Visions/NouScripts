@@ -337,7 +337,40 @@ function easternTime(d) {
   }).format(d);
 }
 
+// Rewrite the spoken text of the cues named in `edits` ({ cueNumber: 'new text' }) and stamp the title with
+// `version`. Headers, source lines, intro and notes pass through byte for byte, so only the words change.
+function applyCueEdits(md, edits, version) {
+  const out = [];
+  let skipping = false;
+  for (const raw of md.replace(/\r\n/g, '\n').split('\n')) {
+    const t = raw.trim();
+    const cue = CUE.exec(t);
+    if (cue || /^##\s/.test(t)) skipping = false;
+    if (cue && Object.prototype.hasOwnProperty.call(edits, cue[1])) {
+      out.push(raw, oneLine(edits[cue[1]]));
+      skipping = true;
+      continue;
+    }
+    if (skipping && t && !/^\*(?!\*)(.+)\*$/.test(t)) continue;
+    out.push(/^#\s/.test(t) && version ? raw.replace(/(Nou script v)\d+/i, `$1${version}`) : raw);
+  }
+  return out.join('\n');
+}
+const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();
+
+// Save edits made from `baseVersion` as the next version number. Never overwrites a file (flag 'wx').
+function saveVersion(dir, baseVersion, edits) {
+  const base = path.join(dir, `script_v${baseVersion}.md`);
+  if (!fs.existsSync(base)) throw new Error(`no script_v${baseVersion}.md in ${dir}`);
+  for (const [n, s] of Object.entries(edits)) if (!oneLine(s)) throw new Error(`cue ${n} is empty`);
+  const next = Math.max(...fs.readdirSync(dir).map(versionOf).filter((v) => v !== null)) + 1;
+  const file = path.join(dir, `script_v${next}.md`);
+  fs.writeFileSync(file, applyCueEdits(fs.readFileSync(base, 'utf8'), edits, next), { flag: 'wx' });
+  return { version: next, path: file };
+}
+
 module.exports = {
+  applyCueEdits, saveVersion,
   WORDS_PER_SECOND, storiesRoot, listStories, parseScript, compare, wordDiff, cueChanges, writeApproval,
   readApproval, approvalIsCurrent, easternTime, countWords, DEFAULT_BANLIST,
   loadBanlist, lintCue, toOpenClap, exportOpenClap,

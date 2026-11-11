@@ -5,6 +5,7 @@ const state = {
   scrolling: null, speed: 40, query: '', filter: 'all',
   railCollapsed: localStorage.getItem('nou-rail-collapsed') === 'true',
   prompterMirror: false, prompterFontSize: 46,
+  writing: false, edits: {},
 };
 
 function esc(s) {
@@ -18,6 +19,71 @@ function inline(s) {
     .replace(/(^|[^*])\*([^*]+)\*/g, '$1<i>$2</i>');
 }
 const fmtTime = (s) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`);
+
+// Write mode: what you type, counted and linted live with the same rules as the main process.
+const countWords = (s) => (s.match(/[A-Za-z0-9][A-Za-z0-9'’.,-]*/g) || []).length;
+function lint(text, terms) {
+  return [...new Set(terms.filter((t) => new RegExp(`(?:^|[^a-zA-Z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^a-zA-Z0-9])`, 'i').test(text)))];
+}
+const oneLine = (s) => s.replace(/\s+/g, ' ').trim();
+function changedEdits() {
+  const out = {};
+  for (const c of (state.data ? state.data.script.cues : [])) {
+    const v = state.edits[c.n];
+    if (v !== undefined && oneLine(v) !== oneLine(c.text)) out[c.n] = v;
+  }
+  return out;
+}
+const dirty = () => Object.keys(changedEdits()).length > 0;
+const leaveOk = () => !state.writing || !dirty() || confirm('Discard your unsaved edits?');
+const nextVersion = () => Math.max(...state.data.story.versions) + 1;
+
+function setWriting(on) {
+  state.writing = on; state.edits = {};
+  if (on && !$('prompter').hidden) closePrompter();
+  setMode(on ? 'write' : 'read');
+  load();
+}
+
+function updateWriteState() {
+  const d = state.data; const wps = d.wordsPerSecond || 2.8;
+  let words = 0; let flagged = 0;
+  for (const c of d.script.cues) {
+    const text = state.edits[c.n] ?? c.text;
+    const w = countWords(text); const flags = lint(text, d.banlist || []);
+    words += w; if (flags.length) flagged++;
+    const art = document.querySelector(`.cue[data-n="${c.n}"]`);
+    if (!art) continue;
+    art.querySelector('.cue-time').textContent = `${w} words · ~${Math.round(w / wps)}s`;
+    const fl = art.querySelector('.cliche-live');
+    fl.hidden = !flags.length; fl.textContent = flags.length ? `cliché: ${flags.join(', ')}` : '';
+    art.classList.toggle('edited', oneLine(text) !== oneLine(c.text));
+    art.querySelector('.cue-edit').classList.toggle('empty', !oneLine(text));
+  }
+  const n = Object.keys(changedEdits()).length;
+  const empty = d.script.cues.some((c) => !oneLine(state.edits[c.n] ?? c.text));
+  const save = $('write-save');
+  save.disabled = !n || empty;
+  save.textContent = `Save as v${nextVersion()}`;
+  $('write-status').textContent = empty ? 'A line is empty. Every cue needs words before you can save.'
+    : n ? `${n} line${n === 1 ? '' : 's'} edited · ${words} words · ~${fmtTime(Math.round(words / wps))}${flagged ? ` · ${flagged} flagged` : ''}. v${d.version} stays as it is.`
+    : `Editing v${d.version}. Saving makes v${nextVersion()}; v${d.version} stays as it is.`;
+}
+
+async function saveWriting() {
+  const edits = changedEdits();
+  if (!Object.keys(edits).length || $('write-save').disabled) return;
+  $('write-save').disabled = true; $('write-save').textContent = 'Saving…';
+  try {
+    const r = await window.nou.save(state.id, state.version, edits);
+    state.writing = false; state.edits = {}; state.version = r.version; state.showChanges = true;
+    setMode('read');
+    await refresh(true);
+  } catch (err) {
+    $('write-status').textContent = `Save failed: ${err.message}`;
+    $('write-save').disabled = false;
+  }
+}
 
 async function refresh(keep = true) {
   const { root, stories } = await window.nou.list();
@@ -57,7 +123,7 @@ function renderStories() {
   }).join('');
   if (!visible.length) $('stories').innerHTML = `<div class="story-empty">${state.query ? 'No matching stories' : 'No stories in this filter'}</div>`;
   for (const b of $('stories').querySelectorAll('.story')) {
-    b.onclick = () => { state.id = b.dataset.id; state.version = null; refresh(true); };
+    b.onclick = () => { if (!leaveOk()) return; state.writing = false; state.edits = {}; setMode('read'); state.id = b.dataset.id; state.version = null; refresh(true); };
   }
 }
 
@@ -86,7 +152,7 @@ async function load() {
     : d.approval ? `You’re viewing v${d.version}; v${d.approval.version} is approved. This version is not approved for rendering.` : '';
   $('versions').innerHTML = d.story.versions.map((v) =>
     `<button type="button" class="${v === d.version ? 'on' : ''}" data-v="${v}">v${v}</button>`).join('');
-  for (const b of $('versions').querySelectorAll('button')) b.onclick = () => { state.version = Number(b.dataset.v); load(); };
+  for (const b of $('versions').querySelectorAll('button')) b.onclick = () => { if (!leaveOk()) return; state.edits = {}; state.version = Number(b.dataset.v); load(); };
 
   const changed = d.diff.filter((x) => x !== 'same').length;
   const tc = $('toggle-changes');
@@ -107,14 +173,28 @@ async function load() {
     const chg = d.diff[i];
     const badge = d.prevVersion && chg !== 'same' ? `<span class="chg ${chg}">${chg === 'new' ? 'new' : 'changed'}</span>` : '';
     const flagBadge = c.flags && c.flags.length ? `<span class="chg cliche" title="AI cliché: ${esc(c.flags.join(', '))}">cliché: ${esc(c.flags.join(', '))}</span>` : '';
-    return `<article class="cue ${c.onCamera ? 'cam' : 'vo'}">
+    const body = state.writing
+      ? `<textarea class="cue-edit" data-n="${c.n}" spellcheck="true" aria-label="Cue ${c.n} spoken text">${esc(state.edits[c.n] ?? c.text)}</textarea>`
+      : `<p class="cue-text">${cueText(c, d.changes && d.changes[i])}</p>`;
+    return `<article class="cue ${c.onCamera ? 'cam' : 'vo'}" data-n="${c.n}">
       <div class="cue-head"><span class="cue-n">${c.n}</span><span class="kind">${c.onCamera ? 'ON CAM' : esc(c.kind)}</span>
-        ${c.hint ? `<span>${esc(c.hint)}</span>` : ''}${badge}${flagBadge}
+        ${c.hint ? `<span>${esc(c.hint)}</span>` : ''}${state.writing ? '<span class="chg cliche cliche-live" hidden></span>' : badge + flagBadge}
         <span class="cue-time">${c.words} words · ~${c.seconds}s</span></div>
-      <p class="cue-text">${cueText(c, d.changes && d.changes[i])}</p>
+      ${body}
       ${c.source ? `<div class="cue-src">${inline(c.source)}</div>` : ''}
     </article>`;
   }).join('');
+
+  $('write-bar').hidden = !state.writing;
+  document.body.classList.toggle('writing', state.writing);
+  if (state.writing) {
+    const grow = (t) => { t.style.height = 'auto'; t.style.height = `${t.scrollHeight + 2}px`; };
+    for (const t of $('cues').querySelectorAll('.cue-edit')) {
+      grow(t);
+      t.addEventListener('input', () => { state.edits[t.dataset.n] = t.value; grow(t); updateWriteState(); });
+    }
+    updateWriteState();
+  }
 
   $('notes').innerHTML = sc.notes.map((n) => {
     const items = n.lines.filter((l) => l.trim());
@@ -182,8 +262,8 @@ function openPrompter() {
   setMode('prompt');
   updateSpeed();
 }
-function closePrompter() { stopScroll(); $('prompter').hidden = true; setMode('read'); }
-function setMode(m) { $('mode-read').classList.toggle('on', m === 'read'); $('mode-prompt').classList.toggle('on', m === 'prompt'); }
+function closePrompter() { stopScroll(); $('prompter').hidden = true; setMode(state.writing ? 'write' : 'read'); }
+function setMode(m) { for (const k of ['read', 'write', 'prompt']) $(`mode-${k}`).classList.toggle('on', m === k); }
 function updateSpeed() { $('p-speed').textContent = `${state.speed} px/s${state.scrolling ? ' · playing' : ''}`; }
 function startScroll() {
   let last = performance.now(); const box = $('p-scroll'); let acc = 0;
@@ -200,8 +280,14 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowDown') { state.speed = Math.max(5, state.speed - 5); updateSpeed(); }
 });
 
-$('mode-read').onclick = () => { if (!$('prompter').hidden) closePrompter(); };
-$('mode-prompt').onclick = () => state.data && openPrompter();
+$('mode-read').onclick = () => { if (!$('prompter').hidden) closePrompter(); if (state.writing && leaveOk()) setWriting(false); };
+$('mode-write').onclick = () => { if (!$('prompter').hidden) closePrompter(); if (state.data && !state.writing) setWriting(true); };
+$('mode-prompt').onclick = () => { if (state.data && leaveOk()) { state.writing = false; state.edits = {}; load(); openPrompter(); } };
+$('write-save').onclick = saveWriting;
+$('write-cancel').onclick = () => { if (leaveOk()) setWriting(false); };
+document.addEventListener('keydown', (e) => {
+  if (state.writing && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveWriting(); }
+});
 $('p-mirror').onclick = () => {
   state.prompterMirror = !state.prompterMirror;
   $('p-mirror').classList.toggle('on', state.prompterMirror);
@@ -251,7 +337,10 @@ $('toggle-sources').onclick = (e) => {
 };
 
 setRailCollapsed(state.railCollapsed || new URLSearchParams(location.search).get('rail') === 'collapsed');
-window.nou.onChange(() => refresh(true));
+// A file change while you type would re-render the editors and lose your words; refresh the list only.
+window.nou.onChange(() => (state.writing ? window.nou.list().then(({ stories }) => { state.stories = stories; renderStories(); }) : refresh(true)));
 refresh(false).then(() => {
-  if (new URLSearchParams(location.search).get('mode') === 'prompt') openPrompter();
+  const m = new URLSearchParams(location.search).get('mode');
+  if (m === 'prompt') openPrompter();
+  if (m === 'write') setWriting(true);
 });

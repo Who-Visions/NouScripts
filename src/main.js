@@ -71,6 +71,7 @@ ipcMain.handle('script:load', (_e, { id, version }) => {
     script: parsed, diff: S.compare(prev, parsed), changes: S.cueChanges(prev, parsed),
     approval: story.approval, approvalCurrent: S.approvalIsCurrent(story.dir, story.approval),
     modified: S.easternTime(new Date(cur.mtime)),
+    banlist: S.loadBanlist(), wordsPerSecond: S.WORDS_PER_SECOND,
   };
 });
 
@@ -85,6 +86,12 @@ ipcMain.handle('script:approve', async (_e, { id, version, note }) => {
   }
   broadcastApproval(story.id, version, note).catch(() => {});
   return result;
+});
+
+ipcMain.handle('script:save', (_e, { id, version, edits }) => {
+  const story = storyById(id);
+  if (!story) throw new Error('story not found');
+  return S.saveVersion(story.dir, version, edits);
 });
 
 ipcMain.handle('script:exportClap', (_e, { id, version }) => {

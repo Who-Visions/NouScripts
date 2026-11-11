@@ -33,6 +33,7 @@
         <div class="seg" id="versions" role="tablist" aria-label="Versions"></div>
         <div class="seg" role="tablist" aria-label="View">
           <button id="mode-read" class="on" type="button">Read</button>
+          <button id="mode-write" type="button" title="Edit the spoken lines (⌘S saves a new version)">Write</button>
           <button id="mode-prompt" type="button">Teleprompter</button>
         </div>
         <button id="toggle-changes" class="ghost" type="button" aria-pressed="true" title="Show what changed since the previous version">Changes</button>
@@ -46,6 +47,8 @@
     <section class="stats" id="stats"></section>
 
     <section id="approval" class="approval"></section>
+
+    <div id="write-bar" class="write-bar" hidden><span id="write-status">Editing. Saving makes a new version; this one stays as it is.</span><button id="write-cancel" class="ghost" type="button">Discard</button><button id="write-save" class="primary" type="button" disabled>Save</button></div>
 
     <section id="cues" class="cues" aria-live="polite"></section>
 
