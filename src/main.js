@@ -515,8 +515,10 @@ function refitToDisplay() {
   const size = refit(win.getBounds(), display.workAreaSize);
   if (size) win.setSize(size.width, size.height);
 }
-screen.on('display-metrics-changed', refitToDisplay);
-screen.on('display-removed', refitToDisplay);
-
-app.whenReady().then(() => { createWindow(); watchStories(); updater.start(); });
+// The screen module is only usable after 'ready'; attach the display listeners there.
+app.whenReady().then(() => {
+  createWindow(); watchStories(); updater.start();
+  screen.on('display-metrics-changed', refitToDisplay);
+  screen.on('display-removed', refitToDisplay);
+});
 app.on('window-all-closed', () => { if (watcher) watcher.close(); app.quit(); });
