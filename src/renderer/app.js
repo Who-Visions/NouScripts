@@ -38,8 +38,8 @@ const dirty = () => Object.keys(changedEdits()).length > 0;
 const leaveOk = () => !state.writing || !dirty() || confirm('Discard your unsaved edits?');
 const nextVersion = () => Math.max(...state.data.story.versions) + 1;
 
-function setWriting(on) {
-  state.writing = on; state.edits = {};
+function setWriting(on, prefill = {}) {
+  state.writing = on; state.edits = { ...prefill };
   if (on && !$('prompter').hidden) closePrompter();
   setMode(on ? 'write' : 'read');
   load();
@@ -334,6 +334,42 @@ $('toggle-sources').onclick = (e) => {
   state.showSources = !state.showSources;
   e.currentTarget.setAttribute('aria-pressed', String(state.showSources));
   $('cues').classList.toggle('hide-src', !state.showSources);
+};
+
+// ── Bottom dock: the producer line into Nou's ear ─────────────────────────
+const ask = { files: [], busy: false };
+function renderChips() {
+  $('ask-chips').innerHTML = ask.files.map((f, i) =>
+    `<span class="chip" title="${esc(f.name)}${f.text ? '' : ' (name only: not a text file)'}"><span>${esc(f.name)}</span><button type="button" data-i="${i}" aria-label="Remove ${esc(f.name)}">×</button></span>`).join('');
+  for (const b of $('ask-chips').querySelectorAll('button')) b.onclick = () => { ask.files.splice(Number(b.dataset.i), 1); renderChips(); };
+}
+function setReply(text, cls = '') { $('ask-reply').textContent = text; $('ask-reply').closest('.dock-reply').className = `dock-mod dock-reply ${cls}`; }
+function growAsk() { const t = $('ask-text'); t.style.height = 'auto'; t.style.height = `${Math.min(140, t.scrollHeight)}px`; }
+$('ask-attach').onclick = async () => { ask.files.push(...await window.nou.attach()); renderChips(); };
+$('ask-text').addEventListener('input', growAsk);
+$('ask-text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('ask-form').requestSubmit(); } });
+$('ask-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const instruction = $('ask-text').value.trim();
+  if (!instruction || ask.busy || !state.data) return;
+  ask.busy = true; $('ask-send').disabled = true;
+  const model = $('ask-model').value;
+  setReply(`Asking ${$('ask-model').selectedOptions[0].textContent}…`, 'busy');
+  // Ask about what is on screen: your unsaved edits if you are writing, else this version.
+  const cues = state.data.script.cues.map((c) => ({ n: c.n, kind: c.kind, hint: c.hint, onCamera: c.onCamera, source: c.source, text: state.edits[c.n] ?? c.text }));
+  try {
+    const r = await window.nou.ask({ id: state.id, version: state.version, cues, instruction, attachmentIds: ask.files.map((f) => f.id), model });
+    const n = Object.keys(r.edits).length;
+    $('ask-text').value = ''; growAsk();
+    if (n) {
+      const keep = state.writing ? { ...state.edits } : {};
+      if (!$('prompter').hidden) closePrompter();
+      setWriting(true, { ...keep, ...r.edits });
+    }
+    setReply(`${n ? `${n} line${n === 1 ? '' : 's'} suggested: ${Object.keys(r.edits).map((k) => `#${k}`).join(', ')}. Review in Write, then save or discard.` : 'No line changes.'}${r.note ? ` ${r.note}` : ''} (${r.seconds}s)`);
+  } catch (err) {
+    setReply(`Didn't work: ${String(err.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`, 'err');
+  } finally { ask.busy = false; $('ask-send').disabled = false; }
 };
 
 setRailCollapsed(state.railCollapsed || new URLSearchParams(location.search).get('rail') === 'collapsed');

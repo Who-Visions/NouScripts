@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
@@ -92,6 +92,62 @@ ipcMain.handle('script:save', (_e, { id, version, edits }) => {
   const story = storyById(id);
   if (!story) throw new Error('story not found');
   return S.saveVersion(story.dir, version, edits);
+});
+
+// ── Producer line ──────────────────────────────────────────────────────────
+// The NVIDIA key is read from the Keymaker by name and kept in this process only; the window never sees it.
+const SHARDS = path.join(require('os').homedir(), 'The Observatory', 'NouGen', 'nougenshards');
+let nvidiaKey = null;
+function keymakerGet(name) {
+  return new Promise((resolve, reject) => {
+    const py = path.join(SHARDS, '.venv', 'bin', 'python');
+    const code = "import sys; sys.path.insert(0,'src'); from nougen_shards import keymaker; sys.stdout.write(keymaker.get_secret(sys.argv[1]) or '')";
+    execFile(py, ['-c', code, name], { cwd: SHARDS, timeout: 15000 }, (err, out) => {
+      if (err || !out.trim()) reject(new Error(`${name} is not in the Keymaker on this machine`));
+      else resolve(out.trim());
+    });
+  });
+}
+
+const TEXT_EXT = /\.(md|txt|markdown|html?|json|csv|srt|vtt|xml|ya?ml)$/i;
+const attached = new Map(); // id -> { name, path }, so the window only ever holds ids and names
+ipcMain.handle('ask:attach', async () => {
+  const r = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'], title: 'Attach files for Nou' });
+  if (r.canceled) return [];
+  return r.filePaths.map((p) => {
+    const id = require('crypto').randomUUID();
+    attached.set(id, { name: path.basename(p), path: p });
+    return { id, name: path.basename(p), text: TEXT_EXT.test(p) };
+  });
+});
+
+function readAttachment(a) {
+  if (!TEXT_EXT.test(a.path)) return { name: a.name, text: '' };
+  let t = fs.readFileSync(a.path, 'utf8');
+  if (/\.html?$/i.test(a.path)) t = t.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ');
+  return { name: a.name, text: t.replace(/\s+/g, ' ').trim().slice(0, 24000) };
+}
+
+ipcMain.handle('ask:send', async (_e, { id, version, cues, instruction, attachmentIds = [], model }) => {
+  const story = storyById(id);
+  if (!story) throw new Error('story not found');
+  if (!String(instruction || '').trim()) throw new Error('say what to change');
+  const files = attachmentIds.map((a) => attached.get(a)).filter(Boolean).map(readAttachment);
+  nvidiaKey = nvidiaKey || await keymakerGet('NVIDIA_API_KEY');
+  const t0 = Date.now();
+  const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${nvidiaKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, messages: S.buildAskMessages(cues, instruction, files), temperature: 0.4, max_tokens: 3000 }),
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!res.ok) throw new Error(`NVIDIA ${res.status}${res.status === 404 ? ': this account cannot call that model' : ''}`);
+  const d = await res.json();
+  const out = S.parseAskReply(d.choices?.[0]?.message?.content, cues.map((c) => c.n));
+  // Keep a record next to the story: what was asked, of which version, and what came back.
+  const log = path.join(story.dir, 'producer_log.jsonl');
+  fs.appendFileSync(log, JSON.stringify({ at: new Date().toISOString(), version, model, instruction, attachments: files.map((f) => f.name), ...out }) + '\n');
+  return { ...out, model, seconds: Math.round((Date.now() - t0) / 100) / 10 };
 });
 
 ipcMain.handle('script:exportClap', (_e, { id, version }) => {
