@@ -135,3 +135,16 @@ goes to the window (`src/preload.js` forwards it into the page, as the Electron 
 context-isolated pages; `ui/src/lib/jobs.js` picks it up by job id). The job streams named steps, which the dock
 shows live with elapsed time, and the dock's Stop button sends `{type: 'cancel'}`: every network call in the job
 and the local transcription process are aborted through one `AbortSignal` carried by `AsyncLocalStorage`.
+
+## Auto-updates
+
+`src/updater.js` wraps Electron's `autoUpdater` (Squirrel.Mac and Squirrel.Windows). It is inert until both are true:
+the app is packaged (`app.isPackaged`) and `NOU_UPDATE_URL` points at a feed. The feed is read per platform and
+version: `$NOU_UPDATE_URL/<platform>-<arch>/<version>`.
+
+Before updates can install for real, two things must exist and neither is in this repo yet:
+1. A signed macOS build. Electron's docs say Squirrel.Mac only applies updates to a signed app.
+2. A feed server with the release artifacts (zip for macOS, Squirrel for Windows) and an endpoint that answers the update check.
+
+An update is never installed on its own. When one is downloaded the top bar offers "Restart to install the update", and
+that refuses while a job is running (`isBusy` counts the MessagePort jobs). Tests: `node --test test/updater.test.js`.
