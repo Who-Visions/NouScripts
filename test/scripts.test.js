@@ -161,3 +161,21 @@ test('saveVersion writes the next version and never overwrites', () => {
   assert.strictEqual(S.parseScript(fs.readFileSync(r.path, 'utf8')).cues[0].text, 'Edited from one.');
   assert.throws(() => S.saveVersion(dir, 3, { 1: '   ' }), /empty/);
 });
+
+test('producer line: prompt carries cues, sources, attachments and the instruction', () => {
+  const cues = [{ n: 1, kind: 'ON CAM', onCamera: true, hint: 'open', text: 'Hello.', source: 'Src one.' }];
+  const m = S.buildAskMessages(cues, ' tighten it ', [{ name: 'notes.txt', text: 'Fact A.' }]);
+  assert.strictEqual(m[0].role, 'system');
+  assert.match(m[0].content, /never add a claim/i);
+  assert.match(m[1].content, /\[1\] ON CAM \(open\)\nHello\.\nSource note: Src one\./);
+  assert.match(m[1].content, /Attached: notes\.txt ---\nFact A\./);
+  assert.match(m[1].content, /INSTRUCTION:\ntighten it$/);
+});
+
+test('producer line: reply parsing keeps only real, non-empty cue edits', () => {
+  const r = S.parseAskReply('<think>hmm {x}</think>Sure!\n```json\n{"edits":{"1":"New  one.","9":"ghost","2":"  "},"note":"Tightened."}\n```', [1, 2]);
+  assert.deepStrictEqual(r.edits, { 1: 'New one.' });
+  assert.strictEqual(r.note, 'Tightened.');
+  assert.deepStrictEqual(S.parseAskReply('{"2":"Flat form."}', [1, 2]).edits, { 2: 'Flat form.' });
+  assert.throws(() => S.parseAskReply('no json here', [1]), /JSON/);
+});

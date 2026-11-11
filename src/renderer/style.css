@@ -204,3 +204,52 @@ dialog::backdrop { background: rgba(5, 3, 10, 0.7); }
 .cliche-live[hidden] { display: none; }
 body.writing .approval { display: none; }
 .top-right button { white-space: nowrap; flex-shrink: 0; }
+
+/* ── Three bands: top (menu + telemetry), middle (left rail · main · right rail), bottom dock (3 modules, input centre). */
+.shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; }
+.topbar { background: #111117; border-bottom: 1px solid var(--line); padding: 10px 18px 8px 84px; -webkit-app-region: drag; }
+.topbar > * , .menubar > * { -webkit-app-region: no-drag; }
+.menubar { display: flex; align-items: center; gap: 18px; -webkit-app-region: drag; }
+.topbar .brand { padding: 0; flex: 0 0 auto; }
+.topbar h1 { font-size: 19px; letter-spacing: -.3px; }
+.topbar .meta { margin-top: 1px; font-size: 11px; }
+.telemetry { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.telemetry .stat { display: flex; align-items: baseline; gap: 7px; padding: 4px 10px; border-radius: 999px; background: var(--panel); }
+.telemetry .stat b { display: inline; font-size: 13px; letter-spacing: 0; }
+.telemetry .stat span { font-size: 11px; }
+.app { grid-template-columns: 260px minmax(0, 1fr) 320px; height: auto; min-height: 0; }
+.rail-collapsed .app { grid-template-columns: 68px minmax(0, 1fr) 320px; }
+.side { padding-top: 14px; -webkit-app-region: no-drag; }
+.side-heading .rail-toggle { margin-left: 6px; }
+.rail-collapsed .rail-expand { position: static; margin: 0 auto 10px; }
+.main { padding: 18px clamp(18px, 3vw, 44px) 40px; }
+.rail-right { overflow: auto; border-left: 1px solid var(--line); background: #15151b; padding: 16px; }
+.rail-right .approval { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 0; }
+.rail-right .approval .primary { width: 100%; }
+.rail-right .notes { margin-top: 18px; font-size: 13px; }
+.rail-right .notes h3:first-child { margin-top: 0; }
+.dock { display: grid; grid-template-columns: 260px minmax(0, 1fr) 320px; gap: 12px; padding: 10px 14px 12px; border-top: 1px solid var(--line); background: #111117; }
+.dock-mod { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.dock-label { color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; }
+.dock-sub { color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; max-height: 92px; overflow: auto; }
+.dock-lane select { width: 100%; margin-bottom: 6px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 5px 6px; font: inherit; font-size: 12px; }
+.dock-input { display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; border-color: rgba(232, 184, 109, .35); }
+.dock-input:focus-within { border-color: var(--gold); }
+.input-row { display: flex; align-items: flex-end; gap: 8px; }
+.input-row textarea { flex: 1; resize: none; min-height: 38px; max-height: 140px; background: transparent; border: 0; outline: 0; color: var(--text); font: 15px/1.5 var(--read); padding: 8px 2px; }
+.input-row textarea::placeholder { color: var(--faint); }
+.attach, .send { flex: 0 0 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); font-size: 20px; line-height: 1; }
+.attach:hover { border-color: var(--line-hover); }
+.send { background: var(--gold); color: #141414; border: 0; font-weight: 700; }
+.send:disabled { opacity: .45; cursor: default; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips:empty { display: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; padding: 2px 4px 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--text); font-size: 11px; }
+.chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip button { border: 0; background: transparent; color: var(--muted); padding: 0 4px; font-size: 13px; }
+.dock-reply.busy .dock-sub { color: var(--gold); }
+.dock-reply.err .dock-sub { color: var(--danger); }
+@media (max-width: 1100px) {
+  .app, .rail-collapsed .app { grid-template-columns: 68px minmax(0, 1fr) 260px; }
+  .dock { grid-template-columns: 200px minmax(0, 1fr) 220px; }
+}

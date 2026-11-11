@@ -369,7 +369,44 @@ function saveVersion(dir, baseVersion, edits) {
   return { version: next, path: file };
 }
 
+// The producer line: Dave's instruction (plus any attached files) goes to a model, which answers with edits
+// to the spoken lines only. Craft rules borrowed from the newsroom: substance over polish, no performed
+// feeling, every claim traceable to a source note or an attachment.
+const ASK_RULES = [
+  'You are the producer in the ear of Nou, the on-camera AI reporter for NouGen News. The script is read aloud by a text-to-speech voice.',
+  'Apply the instruction to the script. Change only what the instruction calls for; leave other cues untouched.',
+  'Facts: never add a claim, number or name that is not in that cue\'s source note or in an attached file. Never drop a caveat.',
+  'Write for the ear: short sentences, one idea each, concrete verbs, numbers as words. Calm, clear news tone. Substance over polish; no hype and no performed emotion.',
+  'Never use these words or phrases: ' + DEFAULT_BANLIST.join(', ') + '.',
+  'Answer with ONLY a JSON object: {"edits": {"<cue number>": "<new spoken text>"}, "note": "<one or two plain sentences on what you changed and why>"}. Include only cues you changed.',
+].join('\n');
+
+function buildAskMessages(cues, instruction, attachments = []) {
+  const script = cues.map((c) => `[${c.n}] ${c.onCamera ? 'ON CAM' : c.kind}${c.hint ? ` (${c.hint})` : ''}\n${c.text}${c.source ? `\nSource note: ${c.source}` : ''}`).join('\n\n');
+  const files = attachments.map((a) => `--- Attached: ${a.name} ---\n${a.text || '(binary file, name only)'}`).join('\n\n');
+  return [
+    { role: 'system', content: ASK_RULES },
+    { role: 'user', content: `SCRIPT:\n${script}${files ? `\n\nATTACHMENTS:\n${files}` : ''}\n\nINSTRUCTION:\n${String(instruction).trim()}` },
+  ];
+}
+
+// Pull the JSON object out of a model reply (fences, preambles and <think> blocks tolerated) and keep
+// only edits to cues that exist and have words.
+function parseAskReply(text, cueNumbers) {
+  const body = String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '');
+  const start = body.indexOf('{'); const end = body.lastIndexOf('}');
+  if (start < 0 || end <= start) throw new Error('the model did not answer with JSON');
+  let obj;
+  try { obj = JSON.parse(body.slice(start, end + 1)); } catch { throw new Error('the model answered with broken JSON'); }
+  const valid = new Set(cueNumbers.map(String));
+  const raw = obj.edits && typeof obj.edits === 'object' ? obj.edits : obj;
+  const edits = {};
+  for (const [n, s] of Object.entries(raw)) if (valid.has(String(n)) && typeof s === 'string' && oneLine(s)) edits[n] = oneLine(s);
+  return { edits, note: typeof obj.note === 'string' ? obj.note.trim() : '' };
+}
+
 module.exports = {
+  ASK_RULES, buildAskMessages, parseAskReply,
   applyCueEdits, saveVersion,
   WORDS_PER_SECOND, storiesRoot, listStories, parseScript, compare, wordDiff, cueChanges, writeApproval,
   readApproval, approvalIsCurrent, easternTime, countWords, DEFAULT_BANLIST,

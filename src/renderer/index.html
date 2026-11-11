@@ -8,23 +8,11 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app">
-  <aside class="side">
-    <div class="brand"><span class="dot"></span><span class="brand-name">Nou Scripts</span><button id="rail-toggle" class="rail-toggle" type="button" aria-label="Collapse navigation" title="Collapse navigation">‹</button></div>
-    <button id="rail-expand" class="rail-expand" type="button" aria-label="Expand navigation" title="Expand navigation">›</button>
-    <div class="side-heading"><div class="side-label">Stories</div><span id="story-count" class="count"></span></div>
-    <label class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="story-search" type="search" placeholder="Find a story…" autocomplete="off" aria-label="Find a story"><kbd>⌘ K</kbd></label>
-    <div class="filter-row" role="group" aria-label="Filter stories">
-      <button class="filter on" data-filter="all" type="button">All</button>
-      <button class="filter" data-filter="ready" type="button">Approved</button>
-      <button class="filter" data-filter="review" type="button">Needs review</button>
-    </div>
-    <nav id="stories" class="stories" aria-label="Stories"></nav>
-    <div class="side-foot" id="root"></div>
-  </aside>
-
-  <main class="main">
-    <header class="top">
+<div class="shell">
+  <!-- TOP: menu bar + telemetry -->
+  <header class="topbar">
+    <div class="menubar">
+      <div class="brand"><span class="dot"></span><span class="brand-name">Nou Scripts</span></div>
       <div class="top-left">
         <h1 id="title">Loading…</h1>
         <div class="meta" id="meta"></div>
@@ -40,20 +28,60 @@
         <button id="toggle-sources" class="ghost" type="button" aria-pressed="true">Sources</button>
         <button id="btn-export-clap" class="ghost" type="button" title="Export OpenClap interchange file (.clap)">Export .clap</button>
       </div>
-    </header>
+    </div>
+    <section class="telemetry" id="stats" aria-label="Telemetry"></section>
+  </header>
 
-    <div id="version-banner" class="version-banner" hidden></div>
+  <!-- MIDDLE: left rail, main screen, right rail -->
+  <div class="app">
+    <aside class="side">
+      <div class="side-heading"><div class="side-label">Stories</div><span id="story-count" class="count"></span><button id="rail-toggle" class="rail-toggle" type="button" aria-label="Collapse navigation" title="Collapse navigation">‹</button></div>
+      <button id="rail-expand" class="rail-expand" type="button" aria-label="Expand navigation" title="Expand navigation">›</button>
+      <label class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="story-search" type="search" placeholder="Find a story…" autocomplete="off" aria-label="Find a story"><kbd>⌘ K</kbd></label>
+      <div class="filter-row" role="group" aria-label="Filter stories">
+        <button class="filter on" data-filter="all" type="button">All</button>
+        <button class="filter" data-filter="ready" type="button">Approved</button>
+        <button class="filter" data-filter="review" type="button">Needs review</button>
+      </div>
+      <nav id="stories" class="stories" aria-label="Stories"></nav>
+      <div class="side-foot" id="root"></div>
+    </aside>
 
-    <section class="stats" id="stats"></section>
+    <main class="main">
+      <div id="version-banner" class="version-banner" hidden></div>
+      <div id="write-bar" class="write-bar" hidden><span id="write-status">Editing. Saving makes a new version; this one stays as it is.</span><button id="write-cancel" class="ghost" type="button">Discard</button><button id="write-save" class="primary" type="button" disabled>Save</button></div>
+      <section id="cues" class="cues" aria-live="polite"></section>
+    </main>
 
-    <section id="approval" class="approval"></section>
+    <aside class="rail-right" aria-label="Approval and notes">
+      <section id="approval" class="approval"></section>
+      <section id="notes" class="notes"></section>
+    </aside>
+  </div>
 
-    <div id="write-bar" class="write-bar" hidden><span id="write-status">Editing. Saving makes a new version; this one stays as it is.</span><button id="write-cancel" class="ghost" type="button">Discard</button><button id="write-save" class="primary" type="button" disabled>Save</button></div>
-
-    <section id="cues" class="cues" aria-live="polite"></section>
-
-    <section id="notes" class="notes"></section>
-  </main>
+  <!-- BOTTOM: three modules, input in the middle -->
+  <footer class="dock">
+    <section class="dock-mod dock-lane" aria-label="Model lane">
+      <div class="dock-label">Producer line</div>
+      <select id="ask-model" aria-label="Model">
+        <option value="nvidia/nemotron-3-ultra-550b-a55b">Nemotron 3 Ultra · NVIDIA</option>
+        <option value="mistralai/mistral-large-4-1t-a52b">Mistral Large 4 · NVIDIA</option>
+      </select>
+      <div class="dock-sub" id="ask-lane">Suggestions open in Write. Nothing saves until you do.</div>
+    </section>
+    <form class="dock-mod dock-input" id="ask-form" autocomplete="off">
+      <div class="chips" id="ask-chips"></div>
+      <div class="input-row">
+        <button id="ask-attach" class="attach" type="button" title="Attach files (sources, notes, transcripts)" aria-label="Attach files">+</button>
+        <textarea id="ask-text" rows="1" placeholder="Tell Nou what to change… e.g. tighten line 5, make the close land harder" aria-label="Instruction"></textarea>
+        <button id="ask-send" class="send" type="submit" aria-label="Send" title="Send (Enter)">↑</button>
+      </div>
+    </form>
+    <section class="dock-mod dock-reply" aria-label="Last reply">
+      <div class="dock-label">Last reply</div>
+      <div class="dock-sub" id="ask-reply">Nothing asked yet.</div>
+    </section>
+  </footer>
 </div>
 
 <div id="prompter" class="prompter" hidden>

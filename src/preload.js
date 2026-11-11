@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('nou', {
   load: (id, version) => ipcRenderer.invoke('script:load', { id, version }),
   approve: (id, version, note) => ipcRenderer.invoke('script:approve', { id, version, note }),
   save: (id, version, edits) => ipcRenderer.invoke('script:save', { id, version, edits }),
+  attach: () => ipcRenderer.invoke('ask:attach'),
+  ask: (req) => ipcRenderer.invoke('ask:send', req),
   exportClap: (id, version) => ipcRenderer.invoke('script:exportClap', { id, version }),
   reveal: (p) => ipcRenderer.invoke('file:reveal', p),
   open: (p) => ipcRenderer.invoke('file:open', p),
