@@ -5,3 +5,5 @@ out/
 android/.gradle/
 android/local.properties
 android/**/build/
+__pycache__/
+*.pyc
