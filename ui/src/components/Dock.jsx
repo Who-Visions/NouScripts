@@ -152,7 +152,7 @@ export default function Dock({ nou }) {
         <div className={cn('line-clamp-2 text-xs leading-snug break-words text-muted-foreground hover:line-clamp-none',
           nou.reply.tone === 'busy' && 'text-gold', nou.reply.tone === 'err' && 'text-destructive')}>
           {live ? <span className="text-gold">{live.text} · {Math.round((Date.now() - live.t0) / 1000)}s</span> : nou.reply.text}
-          {!live && nou.reply.file && <Button variant="outline" size="sm" className="ml-1.5 h-5 px-1.5 text-[11px]" onClick={() => window.nou.open(nou.reply.file)}>Open</Button>}
+          {!live && nou.reply.file && <Button variant="outline" size="sm" className="ml-1.5 h-5 px-1.5 text-[11px]" onClick={() => nou.openFile(nou.reply.file)}>Open</Button>}
         </div>
       </section>
     </footer>

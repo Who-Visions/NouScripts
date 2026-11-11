@@ -78,7 +78,7 @@ function Media({ nou }) {
   if (!items.length) return <Empty>Digest or fetch a link and its photos, videos and audio appear here.</Empty>;
   const shown = items.filter((m) => filter === 'all' || m.kind === filter).slice(0, 24);
   const act = async (kind, m) => {
-    if (kind === 'open') return window.nou.mediaOpen(nou.id, m.url);
+    if (kind === 'open') { const err = await window.nou.mediaOpen(nou.id, m.url); if (err) nou.setReply(`Couldn't open it: ${err}`, 'err'); return; }
     if (kind === 'digest') return nou.requestDigest(m.url);
     if (kind === 'attach') {
       try { nou.addChips([await window.nou.mediaAttach(nou.id, m.url)]); nou.setReply(`Attached ${m.label || 'photo'}.`); }
@@ -139,7 +139,7 @@ function FileList({ items, empty, sub }) {
           </AccordionTrigger>
           <AccordionContent className="pb-1">
             {g.items.map((f) => (
-              <button key={f.path} type="button" onClick={() => window.nou.open(f.path)}
+              <button key={f.path} type="button" onClick={() => nou.openFile(f.path)}
                 className="flex w-full flex-col rounded-md px-2 py-1.5 text-left hover:bg-card focus-visible:ring-2 focus-visible:ring-ring">
                 <span className="line-clamp-2 text-xs">{f.title}</span>
                 <span className="truncate text-[10px] text-faint">{sub(f)}</span>

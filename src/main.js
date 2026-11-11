@@ -331,8 +331,9 @@ ipcMain.handle('media:attach', (_e, { id, url }) => {
 ipcMain.handle('media:open', (_e, { id, url }) => {
   const story = storyById(id);
   const m = story && readMedia(story).find((x) => x.url === url);
-  if (m && m.file) return shell.openPath(path.join(story.dir, m.file));
-  if (/^https:\/\//.test(url)) return shell.openExternal(url);
+  if (m && m.file) return shell.openPath(path.join(story.dir, m.file)); // '' when opened, else the error text
+  if (/^https:\/\//.test(url)) return shell.openExternal(url).then(() => '', (e) => e.message);
+  return 'Only downloaded files and https links can be opened.';
 });
 
 const KIND_PREFIX = { youtube: 'video', media: 'media', pdf: 'pdf', page: 'web' };
@@ -448,7 +449,8 @@ ipcMain.handle('script:exportClap', (_e, { id, version }) => {
 });
 
 ipcMain.handle('file:reveal', (_e, p) => { if (inRoot(p)) shell.showItemInFolder(p); });
-ipcMain.handle('file:open', (_e, p) => { if (inRoot(p)) return shell.openPath(p); });
+// Resolves to '' when the file opened, else the reason (shell.openPath resolves with the error text).
+ipcMain.handle('file:open', async (_e, p) => (inRoot(p) ? shell.openPath(p) : 'That file is outside the story folder.'));
 
 function watchStories() {
   const root = S.storiesRoot();
@@ -475,7 +477,7 @@ function createWindow() {
     },
   });
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https:\/\//.test(url)) shell.openExternal(url);
+    if (/^https:\/\//.test(url)) shell.openExternal(url).catch(() => { /* the OS refused: nothing else to do */ });
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e) => e.preventDefault());

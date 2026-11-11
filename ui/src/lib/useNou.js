@@ -29,6 +29,12 @@ export function useNou() {
   const addChips = useCallback((list) => setChips((cur) => [...cur, ...list.filter((c) => c && !cur.some((x) => x.id === c.id))]), []);
   const removeChip = useCallback((cid) => setChips((cur) => cur.filter((c) => c.id !== cid)), []);
   const setReply = useCallback((text, tone = '', file = null) => setReplyState({ text: String(text).replace(/\*\*([^*]+)\*\*/g, '$1'), tone, file }), []);
+  // Open a file or link; a failure shows in the reply line instead of doing nothing.
+  const openFile = useCallback(async (p) => {
+    const err = await window.nou.open(p);
+    if (err) setReply(`Couldn't open it: ${err}`, 'err');
+    return err;
+  }, [setReply]);
   const requestDigest = useCallback((url) => setPendingDigest({ url, at: Date.now() }), []);
   const writingRef = useRef(false);
   writingRef.current = writing;
@@ -128,6 +134,6 @@ export function useNou() {
     showSources, showChanges, media, files,
     refresh, refreshAux, selectStory, selectVersion, setPanel, setRailCollapsed, setView, setWriting, setEdit, save, approve,
     setPrompter, setShowSources, setShowChanges, scriptCues, leaveOk,
-    chips, addChips, removeChip, reply, setReply, pendingDigest, setPendingDigest, requestDigest,
+    chips, addChips, removeChip, reply, setReply, pendingDigest, setPendingDigest, requestDigest, openFile,
   };
 }
