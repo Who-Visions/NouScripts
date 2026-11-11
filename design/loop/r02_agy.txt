@@ -1,0 +1,9 @@
+SCORE: 7/10
+
+FIX 1: In the left rail, the selected story card uses an uncalibrated violet border and tint instead of gold for current selection (Rule 1 & Rule 9), while its title and subtext lack proper alignment and contrast. Change `.story.on` selector to use gold and neutral tones: `.story.on { background: var(--gold-soft); border-color: rgba(232, 184, 109, 0.35); }`
+
+FIX 2: In the bottom dock, the middle input module uses an arrow upload icon (`↑`) on a primary gold block instead of the standard icon styling, competing with the "Approve v5" primary CTA in the right rail and violating Rule 1 (one accent colour for primary action). Change `.send` selector: `.send { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }`
+
+FIX 3: In the top bar telemetry strip, the stats use rounded pill shapes (`border-radius: 999px`) with individual borders, creating excessive visual clutter and container boxing instead of subtle spacing (Rule 2 & Rule 10). Change `.telemetry .stat` selector: `.telemetry .stat { border-radius: 6px; border: 0; background: transparent; padding: 2px 8px; }`
+
+BRIEF: Accent colour budget: at most one primary accent-filled button (gold) may appear on the screen at any time; secondary action triggers and dock submission controls must use neutral panel surfaces (`--panel-2`) with subtle border states.

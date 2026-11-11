@@ -1,0 +1,5 @@
+SCORE: 7/10
+FIX 1: Dock center input has an unauthorized gold resting border visible around the prompt box (.dock-input), violating Rule 12 and Rule 14: `.dock-input { border-color: var(--line); }`
+FIX 2: Bottom dock outer cards use a non-standard 12 px border radius instead of the mandatory 10 px surface radius (Rule 10): `.dock-mod { border-radius: 10px; }`
+FIX 3: Primary action button in the right rail uses non-standard 8 px border-radius (`var(--radius)`) instead of the mandatory 6 px control radius (Rule 10): `.primary { border-radius: 6px; }`
+BRIEF: Surface and control radii must use strict design tokens (--radius-surface: 10px, --radius-control: 6px) across all modules, and resting input containers must never carry accent borders.

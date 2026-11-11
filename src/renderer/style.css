@@ -1,9 +1,9 @@
 :root {
   --bg: #141414;
-  --panel: #1d1d23;
-  --panel-2: #25252e;
-  --line: #2e2e3a;
-  --line-hover: #454556;
+  --panel: #18181a;
+  --panel-2: #222225;
+  --line: #2a2a2d;
+  --line-hover: #3f3f44;
   --text: #f2eee6;
   --muted: #bdb8ad;
   --faint: #7a766f;
@@ -31,7 +31,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .rail-collapsed .app { grid-template-columns: 76px minmax(0, 1fr); }
 
 /* sidebar */
-.side { background: #111117; border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 38px 12px 14px; overflow: hidden; -webkit-app-region: drag; }
+.side { background: #121213; border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 38px 12px 14px; overflow: hidden; -webkit-app-region: drag; }
 .side > * { -webkit-app-region: no-drag; }
 .brand { font-weight: 700; font-size: 15px; letter-spacing: 0.2px; display: flex; align-items: center; gap: 10px; padding: 0 6px 20px; white-space: nowrap; }
 .dot { width: 8px; height: 8px; border-radius: 2px; background: var(--gold); }
@@ -42,12 +42,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .side-heading { display:flex; justify-content:space-between; align-items:center; padding: 0 8px 8px; }
 .side-label { color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; }
 .count { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
-.search-wrap { height: 36px; display:flex; align-items:center; gap:7px; padding:0 8px; margin:0 1px 10px; border:1px solid var(--line); border-radius:9px; color:var(--faint); background:#0d0d12; }
+.search-wrap { height: 36px; display:flex; align-items:center; gap:7px; padding:0 8px; margin:0 1px 10px; border:1px solid var(--line); border-radius:9px; color:var(--faint); background:#0e0e0f; }
 .search-icon { font-size:19px; line-height:1; }
 .search-wrap input { min-width:0; flex:1; color:var(--text); background:transparent; border:0; outline:0; font:inherit; font-size:12px; }
 .search-wrap input::placeholder { color:var(--faint); }
 kbd { font:10px var(--sans); border:1px solid var(--line); border-radius:4px; padding:1px 4px; color:var(--faint); }
-.filter-row { display:flex; gap:3px; margin-bottom:10px; padding:3px; background:#0d0d12; border-radius:9px; }
+.filter-row { display:flex; gap:3px; margin-bottom:10px; padding:3px; background:#0e0e0f; border-radius:9px; }
 .filter { flex:1; background:transparent; color:var(--faint); border:0; border-radius:6px; padding:5px 2px; font-size:10px; white-space:nowrap; }
 .filter:hover { color:var(--text); }
 .filter.on { background:var(--panel-2); color:var(--text); }
@@ -207,7 +207,7 @@ body.writing .approval { display: none; }
 
 /* ── Three bands: top (menu + telemetry), middle (left rail · main · right rail), bottom dock (3 modules, input centre). */
 .shell { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; }
-.topbar { background: #111117; border-bottom: 1px solid var(--line); padding: 10px 18px 8px 84px; -webkit-app-region: drag; }
+.topbar { background: #121213; border-bottom: 1px solid var(--line); padding: 10px 18px 8px 84px; -webkit-app-region: drag; }
 .topbar > * , .menubar > * { -webkit-app-region: no-drag; }
 .menubar { display: flex; align-items: center; gap: 18px; -webkit-app-region: drag; }
 .topbar .brand { padding: 0; flex: 0 0 auto; }
@@ -223,12 +223,12 @@ body.writing .approval { display: none; }
 .side-heading .rail-toggle { margin-left: 6px; }
 .rail-collapsed .rail-expand { position: static; margin: 0 auto 10px; }
 .main { padding: 18px clamp(18px, 3vw, 44px) 40px; }
-.rail-right { overflow: auto; border-left: 1px solid var(--line); background: #15151b; padding: 16px; }
+.rail-right { overflow: auto; border-left: 1px solid var(--line); background: #141415; padding: 16px; }
 .rail-right .approval { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 0; }
 .rail-right .approval .primary { width: 100%; }
 .rail-right .notes { margin-top: 18px; font-size: 13px; }
 .rail-right .notes h3:first-child { margin-top: 0; }
-.dock { display: grid; grid-template-columns: 260px minmax(0, 1fr) 320px; gap: 12px; padding: 10px 14px 12px; border-top: 1px solid var(--line); background: #111117; }
+.dock { display: grid; grid-template-columns: 260px minmax(0, 1fr) 320px; gap: 12px; padding: 10px 14px 12px; border-top: 1px solid var(--line); background: #121213; }
 .dock-mod { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
 .dock-label { color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; }
 .dock-sub { color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; max-height: 92px; overflow: auto; }
@@ -260,7 +260,7 @@ body.writing .approval { display: none; }
 .ab-head span { display: block; color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: 1.1px; }
 .ab-head b { font-size: 13px; font-variant-numeric: tabular-nums; }
 table.ab { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.ab th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1.1px; color: var(--faint); font-weight: 600; padding: 9px 12px; border-bottom: 1px solid var(--line); background: #18181e; }
+.ab th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1.1px; color: var(--faint); font-weight: 600; padding: 9px 12px; border-bottom: 1px solid var(--line); background: #19191b; }
 .ab th:nth-child(1) { width: 82px; } .ab th:nth-child(2) { width: 92px; } .ab th:nth-child(3) { width: 27%; }
 .ab td { vertical-align: top; padding: 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .ab tr.cam td:first-child { box-shadow: inset 3px 0 0 var(--gold); } .ab tr.vo td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
@@ -278,10 +278,77 @@ table.ab { width: 100%; border-collapse: collapse; table-layout: fixed; backgrou
 .ab .sot { margin-top: 6px; color: var(--text); }
 .ab .cue-src { margin-top: 8px; padding-top: 0; border-top: 0; }
 .ab tfoot td { font-size: 12px; color: var(--muted); border-bottom: 0; }
-.lane-seg { display: flex; gap: 2px; padding: 2px; margin-bottom: 6px; background: #0d0d12; border-radius: 8px; }
+.lane-seg { display: flex; gap: 2px; padding: 2px; margin-bottom: 6px; background: #0e0e0f; border-radius: 8px; }
 .lane-seg button { flex: 1; border: 0; background: transparent; color: var(--faint); border-radius: 6px; padding: 4px 2px; font-size: 11px; white-space: nowrap; }
 .lane-seg button.on { background: var(--panel-2); color: var(--text); }
 .digest { flex: 0 0 auto; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(188, 140, 255, .45); background: var(--accent-soft); color: var(--text); font-size: 12px; font-weight: 600; }
 .digest:hover { border-color: var(--accent); }
 .digest:disabled { opacity: .45; cursor: default; }
 .reply-open { border: 1px solid var(--line); background: var(--panel-2); border-radius: 6px; padding: 0 7px; font-size: 11px; color: var(--text); }
+
+/* ── Premium design loop ─────────────────────────────────────────── */
+/* r01: two radii only (10 for surfaces, 6 for controls). */
+.stat, .cue, .approval, .ab-head, table.ab, .dock-mod, .write-bar, .version-banner { border-radius: 10px; }
+.primary, .ghost, .seg, .seg button, .attach, .send, .digest, .search-wrap, .filter-row, .filter, .story, .story-icon, .lane-seg, .lane-seg button, .dock-lane select, .cue-edit, .reply-open { border-radius: 6px; }
+/* r02: one gold button on screen (Approve); selection is gold; telemetry is flat text, not pills. */
+.story.on { background: var(--gold-soft); border-color: rgba(232, 184, 109, 0.35); }
+.story.on .story-icon { color: var(--gold); }
+.send { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+.send:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.telemetry { gap: 2px; }
+.telemetry .stat { border-radius: 6px; border: 0; background: transparent; padding: 2px 8px; }
+.telemetry .stat + .stat { box-shadow: inset 1px 0 0 var(--line); }
+/* r03: accents only on focus or state; status as coloured text, not boxed pills; the root path never wraps. */
+.dock-input { border-color: var(--line); }
+.dock-input:focus-within { border-color: rgba(232, 184, 109, .6); }
+.story .pill { border: 0; background: transparent; padding: 0; color: var(--faint); font-size: 10px; }
+.story .pill.warn { color: var(--gold); }
+.story .pill.ok { color: var(--ok); }
+.story-sub { gap: 8px; }
+.side-foot { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; word-break: normal; }
+/* r04: secondary actions rest neutral; hierarchy from surface steps, not outlines. */
+.digest { border-color: var(--line); background: var(--panel-2); }
+.digest:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.rail-right .approval:not(.ok):not(.stale) { background: transparent; border: 0; padding: 0; }
+.cue { border-color: transparent; background: #161618; }
+.cue:hover { border-color: var(--line); }
+/* r05: segment, change and lint tags are coloured text, never boxes. */
+.cue-head .kind, .cue-head .chg { background: transparent; border: 0; padding: 0; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+.cue.cam .kind { color: var(--gold); }
+.cue.vo .kind { color: var(--accent); }
+.cue-head .chg { color: var(--muted); font-weight: 600; }
+.cue-head .chg.cliche { color: var(--danger); }
+/* r06: radius tokens; every surface and control reads from them. */
+:root { --radius-surface: 10px; --radius-control: 6px; --radius: var(--radius-control); }
+.dock-mod, .stat, .cue, .ab-head, table.ab, .write-bar, .version-banner { border-radius: var(--radius-surface); }
+.primary, .ghost, .attach, .send, .digest, .search-wrap, .story, .cue-edit { border-radius: var(--radius-control); }
+/* r07: input row centred in its module; scroll areas end with breathing room. */
+.dock-input { justify-content: center; }
+.dock-input .input-row { align-items: center; }
+.input-row textarea { padding: 9px 2px; }
+.rail-right { padding-bottom: 28px; }
+.main { padding-bottom: 48px; }
+.cues.as-broadcast { padding-top: 4px; }
+/* r08: the input's line box matches the 38 px controls; approval reads as a section; tighter table header. */
+.input-row textarea { min-height: 38px; line-height: 22px; padding: 8px 2px; }
+.rail-right .approval .what { font-size: 14px; font-weight: 600; margin: 0 0 4px; letter-spacing: -.1px; }
+.rail-right .approval .why { font-size: 12px; line-height: 1.5; }
+.ab th { padding: 7px 12px; }
+/* r09: crisper segmented filter; airier rail lists; lane module breathes. */
+.filter-row { padding: 2px; }
+.filter.on { background: var(--panel-2); color: var(--text); font-weight: 600; }
+.rail-right .notes ul { padding-left: 16px; margin: 6px 0 14px; }
+.rail-right .notes li { color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+.dock-lane select { margin-bottom: 10px; }
+.dock-sub { line-height: 1.5; }
+/* r10: segmented tracks keep a 3 px inset; rail ends clear of the dock; segment cells breathe. */
+.lane-seg, .filter-row { padding: 3px; }
+.rail-right { padding-bottom: 40px; }
+.ab .seg-cell small { margin-top: 4px; }
+/* final: the shell column is the window width, never its widest child (the menu bar widened every band to 1297 px
+   at 1280 once v5 and As Broadcast existed, clipping the right rail). The title side shrinks with an ellipsis. */
+.shell { grid-template-columns: minmax(0, 1fr); width: 100vw; overflow: hidden; }
+.menubar { gap: 14px; min-width: 0; }
+.topbar .top-left { min-width: 0; flex: 1 1 auto; }
+.topbar h1, .topbar .meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-right { flex: 0 0 auto; gap: 8px; }

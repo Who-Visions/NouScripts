@@ -1,0 +1,5 @@
+SCORE: 8.5
+FIX 1: In the bottom-left dock module, the segmented buttons ("Edit", "Web fetch", "Research") touch the top and bottom borders because the container lacks inner vertical clearance; fix with `.lane-seg { padding: 3px; }`
+FIX 2: In the right rail, the "Render cost if approved" section content at the bottom is awkwardly clipped at the dock boundary; fix with `.rail-right { padding-bottom: 40px; }`
+FIX 3: In the As Broadcast view, the segment label text in column 2 ("1 ON CAM", "2 VO") lacks vertical breathing room above its subtext; fix with `.ab .seg-cell small { margin-top: 4px; }`
+BRIEF: 21. Embedded segmented controls within dock modules must maintain a uniform 3 px inner track inset so buttons never touch container edges.
