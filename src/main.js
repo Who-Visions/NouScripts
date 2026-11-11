@@ -68,7 +68,7 @@ ipcMain.handle('script:load', (_e, { id, version }) => {
   return {
     story: { id: story.id, title: story.title, dir: story.dir, versions: story.versions.map((v) => v.version) },
     version, path: cur.path, prevVersion: prevV ? prevV.version : null,
-    script: parsed, diff: S.compare(prev, parsed),
+    script: parsed, diff: S.compare(prev, parsed), changes: S.cueChanges(prev, parsed),
     approval: story.approval, approvalCurrent: S.approvalIsCurrent(story.dir, story.approval),
     modified: S.easternTime(new Date(cur.mtime)),
   };

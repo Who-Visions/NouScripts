@@ -104,3 +104,36 @@ test('generates OpenClap .clap interchange format and exports file', () => {
   fs.rmSync(root, { recursive: true });
 });
 
+
+test('word-level changes show what was cut and what was added', () => {
+  const runs = S.wordDiff('It is cheaper and faster than before.', 'It is twenty percent cheaper than before.');
+  assert.deepStrictEqual(runs, [
+    { t: 'same', s: 'It is' }, { t: 'add', s: 'twenty percent' }, { t: 'same', s: 'cheaper' },
+    { t: 'del', s: 'and faster' }, { t: 'same', s: 'than before.' },
+  ]);
+  // Case alone is not an edit, and identical text has no change runs.
+  assert.ok(S.wordDiff('Nou here.', 'nou here.').every((r) => r.t === 'same'));
+  // Rebuilding the new text from same+add runs gives back exactly the new text.
+  const b = 'Anthropic released two models on Monday, and both are faster.';
+  const rebuilt = S.wordDiff('Anthropic shipped a model on Monday.', b).filter((r) => r.t !== 'del').map((r) => r.s).join(' ');
+  assert.strictEqual(rebuilt, b);
+});
+
+test('cueChanges returns runs only for edited cues', () => {
+  const ch = S.cueChanges(S.parseScript(V1), S.parseScript(V2));
+  assert.strictEqual(ch.length, 3);
+  assert.deepStrictEqual(ch[0].filter((r) => r.t === 'add'), [{ t: 'add', s: 'four.' }]);
+  assert.strictEqual(ch[1], null); // unchanged cue
+  assert.strictEqual(ch[2], null); // new cue: nothing to compare against
+  assert.deepStrictEqual(S.cueChanges(null, S.parseScript(V1)), [null, null]);
+});
+
+test('a heavy rewrite shows as old line then new line, not confetti', () => {
+  const mk = (a) => S.parseScript(`# t\n\n**1. VO**\n${a}\n`);
+  const ch = S.cueChanges(mk('Anthropic just shipped its most capable model yet, and it held one thing back on purpose.'),
+    mk("Anthropic's newest models can take on bigger technical work than ever."));
+  assert.deepStrictEqual(ch[0].map((r) => r.t), ['del', 'add']);
+  // A light edit stays word-level.
+  const light = S.cueChanges(mk('They are the same model underneath.'), mk("They're the same model underneath."));
+  assert.ok(light[0].some((r) => r.t === 'same'));
+});

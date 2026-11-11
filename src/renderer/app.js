@@ -1,7 +1,7 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
 const state = {
-  stories: [], id: null, version: null, data: null, showSources: true,
+  stories: [], id: null, version: null, data: null, showSources: true, showChanges: true,
   scrolling: null, speed: 40, query: '', filter: 'all',
   railCollapsed: localStorage.getItem('nou-rail-collapsed') === 'true',
   prompterMirror: false, prompterFontSize: 46,
@@ -89,10 +89,14 @@ async function load() {
   for (const b of $('versions').querySelectorAll('button')) b.onclick = () => { state.version = Number(b.dataset.v); load(); };
 
   const changed = d.diff.filter((x) => x !== 'same').length;
+  const tc = $('toggle-changes');
+  tc.hidden = !d.prevVersion;
+  tc.textContent = d.prevVersion ? `Changes · ${changed}` : "Changes"; tc.title = d.prevVersion ? `Show what changed since v${d.prevVersion} (${changed} cues)` : "";
+  tc.setAttribute('aria-pressed', String(state.showChanges));
   $('stats').innerHTML = [
     [fmtTime(sc.seconds), 'estimated runtime'],
     [sc.words, 'spoken words'],
-    [`${fmtTime(sc.onCameraSeconds)} · ${sc.avatarJobs} jobs`, 'on camera · OmniAvatar'],
+    [`${fmtTime(sc.onCameraSeconds)} · ${sc.avatarJobs} job${sc.avatarJobs === 1 ? "" : "s"}`, 'on camera · OmniAvatar'],
     [sc.flaggedCount ? `<span style="color:#ff8b8b">${sc.flaggedCount} flagged</span>` : '0 clichés', 'voice lint'],
   ].map(([b, s]) => `<div class="stat"><b>${b}</b><span>${esc(s)}</span></div>`).join('');
 
@@ -107,7 +111,7 @@ async function load() {
       <div class="cue-head"><span class="cue-n">${c.n}</span><span class="kind">${c.onCamera ? 'ON CAM' : esc(c.kind)}</span>
         ${c.hint ? `<span>${esc(c.hint)}</span>` : ''}${badge}${flagBadge}
         <span class="cue-time">${c.words} words · ~${c.seconds}s</span></div>
-      <p class="cue-text">${esc(c.text)}</p>
+      <p class="cue-text">${cueText(c, d.changes && d.changes[i])}</p>
       ${c.source ? `<div class="cue-src">${inline(c.source)}</div>` : ''}
     </article>`;
   }).join('');
@@ -120,6 +124,12 @@ async function load() {
       : items.map((l) => /^\s*[-*]\s/.test(l) ? `<p>• ${inline(l.replace(/^\s*[-*]\s+/, ''))}</p>` : `<p>${inline(l)}</p>`).join('');
     return `<h3>${esc(n.heading)}</h3>${body}`;
   }).join('');
+}
+
+// Cue text with its edits since the previous version: cut words struck through, new words marked.
+function cueText(c, runs) {
+  if (!state.showChanges || !runs) return esc(c.text);
+  return runs.map((r) => r.t === 'add' ? `<ins>${esc(r.s)}</ins>` : r.t === 'del' ? `<del>${esc(r.s)}</del>` : esc(r.s)).join(' ');
 }
 
 function renderApproval(d) {
@@ -233,6 +243,7 @@ document.addEventListener('keydown', (e) => {
   const typing = target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !typing) { e.preventDefault(); setRailCollapsed(false); $('story-search').focus(); }
 });
+$('toggle-changes').onclick = () => { state.showChanges = !state.showChanges; if (state.data) load(); };
 $('toggle-sources').onclick = (e) => {
   state.showSources = !state.showSources;
   e.currentTarget.setAttribute('aria-pressed', String(state.showSources));

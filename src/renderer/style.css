@@ -80,7 +80,9 @@ kbd { font:10px var(--sans); border:1px solid var(--line); border-radius:4px; pa
 .top > * { -webkit-app-region: no-drag; }
 h1 { font-size: clamp(24px, 2.3vw, 32px); line-height: 1.15; margin: 0; font-weight: 700; letter-spacing: -0.6px; }
 .meta { color: var(--muted); margin-top: 6px; font-size: 13px; }
-.top-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.top-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; flex: 0 1 auto; }
+.top-left { min-width: 180px; flex: 1 1 0; }
+@media (min-width: 1200px) { .top-right { flex-wrap: nowrap; } }
 .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
 .seg button { background: none; border: 0; padding: 6px 12px; border-radius: 7px; color: var(--muted); }
 .seg button.on { background: var(--panel-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
@@ -186,3 +188,8 @@ dialog::backdrop { background: rgba(5, 3, 10, 0.7); }
   .approval { align-items:flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition:none !important; scroll-behavior:auto !important; } }
+
+/* word-level changes since the previous version */
+.cue-text ins { text-decoration: none; background: var(--ok-soft); color: var(--text); border-radius: 3px; padding: 0 3px; box-shadow: inset 0 -1px 0 rgba(74, 222, 128, 0.45); }
+.cue-text del { color: var(--faint); text-decoration: line-through; text-decoration-color: var(--danger); text-decoration-thickness: 1.5px; }
+#toggle-changes[hidden] { display: none; }
