@@ -17,6 +17,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -24,7 +27,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -59,6 +64,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
@@ -113,6 +119,7 @@ private fun NouScriptsTheme(content: @Composable () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ScriptReviewScreen() {
     val context = LocalContext.current
@@ -264,63 +271,84 @@ private fun ScriptReviewScreen() {
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = Bg) {
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.width(8.dp).height(8.dp).background(AccentGold, RoundedCornerShape(4.dp)))
-                Spacer(Modifier.width(8.dp))
-                Text("Nou Scripts", style = MaterialTheme.typography.labelLarge, color = AccentGold, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.width(8.dp))
-                Text("· Broadcast Review & Gate", style = MaterialTheme.typography.labelSmall, color = FaintColor)
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                selected?.let { titleOf(it.body) } ?: "Review a script",
-                style = MaterialTheme.typography.headlineMedium,
-                color = TextColor,
-                fontWeight = FontWeight.Bold
-            )
-            Text(folderName, style = MaterialTheme.typography.bodySmall, color = MutedColor, fontFamily = FontFamily.Monospace)
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    onClick = { folderPicker.launch(folderUri) },
-                    modifier = Modifier.defaultMinSize(minHeight = 44.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Panel2, contentColor = TextColor)
-                ) { Text(if (folderUri == null) "Open story folder" else "Change folder") }
-                if (folderUri != null) {
-                    OutlinedButton(
-                        onClick = { refreshTick++ },
-                        enabled = !busy,
-                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, Line)
-                    ) { Text("Refresh") }
-                }
-                if (busy) Text("Loading…", color = MutedColor, fontFamily = FontFamily.Monospace)
-            }
-            if (loadError != null) Text(loadError!!, color = DangerColor, modifier = Modifier.padding(top = 8.dp))
-            if (versions.isNotEmpty()) {
-                Spacer(Modifier.height(13.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    versions.forEach { v ->
-                        val isSelected = v.version == selectedVersion
-                        if (isSelected) {
-                            Button(
-                                onClick = { selectedVersion = v.version },
-                                modifier = Modifier.defaultMinSize(minHeight = 44.dp),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF141414))
-                            ) { Text("v${v.version}", fontWeight = FontWeight.Bold) }
-                        } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().safeDrawingPadding(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        ) {
+            item {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.width(8.dp).height(8.dp).background(AccentGold, RoundedCornerShape(4.dp)))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Nou Scripts", style = MaterialTheme.typography.labelLarge, color = AccentGold, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(8.dp))
+                        Text("· Broadcast Review & Gate", style = MaterialTheme.typography.labelSmall, color = FaintColor)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        selected?.let { titleOf(it.body) } ?: "Review a script",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = TextColor,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        folderName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedColor,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Button(
+                            onClick = { folderPicker.launch(folderUri) },
+                            modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Panel2, contentColor = TextColor)
+                        ) { Text(if (folderUri == null) "Open story folder" else "Change folder") }
+                        if (folderUri != null) {
                             OutlinedButton(
-                                onClick = { selectedVersion = v.version },
+                                onClick = { refreshTick++ },
+                                enabled = !busy,
                                 modifier = Modifier.defaultMinSize(minHeight = 44.dp),
                                 shape = RoundedCornerShape(8.dp),
                                 border = BorderStroke(1.dp, Line)
-                            ) { Text("v${v.version}") }
+                            ) { Text("Refresh") }
                         }
+                        if (busy) Text("Loading…", color = MutedColor, fontFamily = FontFamily.Monospace)
                     }
+                    if (loadError != null) Text(loadError!!, color = DangerColor, modifier = Modifier.padding(top = 8.dp))
+                    if (versions.isNotEmpty()) {
+                        Spacer(Modifier.height(13.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            versions.forEach { v ->
+                                val isSelected = v.version == selectedVersion
+                                if (isSelected) {
+                                    Button(
+                                        onClick = { selectedVersion = v.version },
+                                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = AccentGold, contentColor = Color(0xFF141414))
+                                    ) { Text("v${v.version}", fontWeight = FontWeight.Bold) }
+                                } else {
+                                    OutlinedButton(
+                                        onClick = { selectedVersion = v.version },
+                                        modifier = Modifier.defaultMinSize(minHeight = 44.dp),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, Line)
+                                    ) { Text("v${v.version}") }
+                                }
+                            }
                 }
             }
             if (selected != null) {
@@ -391,18 +419,20 @@ private fun ScriptReviewScreen() {
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(cues, key = { it.number }) { cue ->
-                        CueCard(cue = cue, onFlagClick = { inspectingCue = cue })
-                    }
-                    if (cues.isEmpty()) item { Text("No numbered cue cards found in this script.", color = MutedColor) }
-                }
             } else if (!busy && loadError == null) {
                 Spacer(Modifier.height(18.dp))
                 Text(
                     "Choose a story folder containing script_v1.md and approval.json. All state remains strictly on this device.",
                     color = MutedColor
                 )
+            }
+                }
+            }
+            if (selected != null) {
+                items(cues, key = { it.number }) { cue ->
+                    CueCard(cue = cue, onFlagClick = { inspectingCue = cue })
+                }
+                if (cues.isEmpty()) item { Text("No numbered cue cards found in this script.", color = MutedColor) }
             }
         }
     }
@@ -459,6 +489,7 @@ private fun CueCard(cue: Cue, onFlagClick: () -> Unit) {
                         color = DangerColor,
                         style = MaterialTheme.typography.labelSmall,
                         modifier = Modifier
+                            .defaultMinSize(minHeight = 44.dp)
                             .background(Color(0x22FFB4AB), RoundedCornerShape(4.dp))
                             .clickable { onFlagClick() }
                             .padding(horizontal = 8.dp, vertical = 6.dp)
@@ -469,6 +500,7 @@ private fun CueCard(cue: Cue, onFlagClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TeleprompterScreen(
     script: ScriptVersion,
@@ -503,6 +535,7 @@ private fun TeleprompterScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF000000))
+            .safeDrawingPadding()
             .clickable { showControls = !showControls }
     ) {
         // Center reticle guide
@@ -563,12 +596,12 @@ private fun TeleprompterScreen(
                 border = BorderStroke(1.dp, Line),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Row(
+                FlowRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     OutlinedButton(
                         onClick = onExit,
@@ -595,8 +628,6 @@ private fun TeleprompterScreen(
                     ) {
                         Text(if (mirrorMode) "Mirror: ON" else "Mirror: OFF")
                     }
-
-                    Spacer(Modifier.weight(1f))
 
                     OutlinedButton(
                         onClick = { speedPxPerSec = (speedPxPerSec - 10f).coerceAtLeast(15f) },
