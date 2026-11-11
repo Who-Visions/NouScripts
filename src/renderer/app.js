@@ -198,6 +198,8 @@ async function load() {
     updateWriteState();
   }
 
+  renderMedia();
+
   $('notes').innerHTML = sc.notes.map((n) => {
     const items = n.lines.filter((l) => l.trim());
     const list = items.filter((l) => /^\s*[-*]\s/.test(l));
@@ -206,6 +208,46 @@ async function load() {
       : items.map((l) => /^\s*[-*]\s/.test(l) ? `<p>• ${inline(l.replace(/^\s*[-*]\s+/, ''))}</p>` : `<p>${inline(l)}</p>`).join('');
     return `<h3>${esc(n.heading)}</h3>${body}`;
   }).join('');
+}
+
+// Media sources found while fetching or digesting links: photos (downloaded), videos, audio, embeds.
+const media = { filter: 'all', items: [] };
+async function renderMedia() {
+  if (!state.id) return;
+  media.items = await window.nou.media(state.id);
+  const el = $('media');
+  if (!media.items.length) { el.innerHTML = ''; return; }
+  const counts = { all: media.items.length, image: 0, video: 0, audio: 0 };
+  for (const m of media.items) if (counts[m.kind] !== undefined) counts[m.kind]++;
+  const shown = media.items.filter((m) => media.filter === 'all' || m.kind === media.filter).slice(0, 24);
+  const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  const tile = (m, i) => {
+    // A video found with its thumbnail shows that picture on its tile.
+    const poster = m.kind === 'video' && media.items.find((x) => x.kind === 'image' && x.path && x.source === m.source && x.via === 'thumbnail');
+    const fileUrl = (p) => esc('file://' + p.split('/').map(encodeURIComponent).join('/'));
+    const face = poster ? `<img src="${fileUrl(poster.path)}" alt="" loading="lazy"><span class="m-play">▶</span>` : m.kind === 'image' && m.path
+      ? `<img src="${esc('file://' + m.path.split('/').map(encodeURIComponent).join('/'))}" alt="${esc(m.label || 'photo')}" loading="lazy">`
+      : `<span class="m-glyph">${m.kind === 'video' ? '▶' : m.kind === 'audio' ? '♪' : m.kind === 'pdf' ? 'PDF' : '◻'}</span>`;
+    const canDigest = m.kind !== 'image';
+    return `<figure class="m-tile ${m.kind}" title="${esc(m.label || m.url)}">
+      <button type="button" class="m-face" data-act="open" data-i="${i}">${face}</button>
+      <figcaption><span class="m-label">${esc(m.label || host(m.url))}</span><span class="m-host">${esc(m.kind)} · ${esc(host(m.url))}</span>
+      <span class="m-acts">${canDigest ? `<button type="button" data-act="digest" data-i="${i}">Digest</button>` : ''}${m.path ? `<button type="button" data-act="attach" data-i="${i}">Attach</button>` : ''}<button type="button" data-act="line" data-i="${i}">VIDEO line</button></span></figcaption></figure>`;
+  };
+  el.innerHTML = `<div class="m-head"><h3>Media sources</h3><div class="m-filter">${['all', 'image', 'video', 'audio'].filter((k) => k === 'all' || counts[k])
+    .map((k) => `<button type="button" data-f="${k}" class="${media.filter === k ? 'on' : ''}">${{ all: 'All', image: 'Photos', video: 'Video', audio: 'Audio' }[k]} ${counts[k]}</button>`).join('')}</div></div>
+    <div class="m-grid">${shown.map(tile).join('')}</div>`;
+  for (const b of el.querySelectorAll('.m-filter button')) b.onclick = () => { media.filter = b.dataset.f; renderMedia(); };
+  for (const b of el.querySelectorAll('[data-act]')) b.onclick = async () => {
+    const m = shown[Number(b.dataset.i)];
+    if (b.dataset.act === 'open') return window.nou.mediaOpen(state.id, m.url);
+    if (b.dataset.act === 'digest') { $('ask-text').value = m.url; growAsk(); return runLane('digest', m.url); }
+    if (b.dataset.act === 'attach') { try { addChips([await window.nou.mediaAttach(state.id, m.url)]); setReply(`Attached ${m.label || 'photo'}.`); } catch (err) { setReply(cleanErr(err), 'err'); } return; }
+    if (b.dataset.act === 'line') {
+      const line = `VIDEO: ${m.kind === 'image' ? 'Photo' : m.kind === 'video' ? 'Clip' : 'Audio'}: ${m.label || host(m.url)} (${m.url})`;
+      try { await navigator.clipboard.writeText(line); setReply(`Copied for a cue: ${line}`); } catch { setReply(line); }
+    }
+  };
 }
 
 // As-broadcast: the two-column TV script. Left = what is seen, right = what is heard, with running time code.
@@ -397,12 +439,15 @@ async function runLane(lane, text) {
       setReply(`Working out what each link is, then reading and digesting with ${modelName}… (audio and video are transcribed locally and can take minutes)`, 'busy');
       const r = await window.nou.digest({ id: state.id, version: state.version, text, cues: scriptCues(), model });
       for (const d of r.done) addChips(d.chips);
-      setReply(`${r.done.length ? r.done.map((d) => `Digested ${d.kind} via ${d.lane}: ${d.what || d.title}`).join(' · ') + ' Saved in the story and attached.' : 'Nothing digested.'}${r.failed.length ? ` Couldn't read: ${r.failed.join('; ')}` : ''} (${r.seconds}s)`, r.done.length ? '' : 'err');
+      const found = r.done.reduce((a, d) => a + ((d.media && d.media.added) || 0), 0);
+      setReply(`${r.done.length ? r.done.map((d) => `Digested ${d.kind} via ${d.lane}: ${d.what || d.title}`).join(' · ') + ` Saved in the story and attached.${found ? ` ${found} media source${found === 1 ? '' : 's'} added to the panel.` : ''}` : 'Nothing digested.'}${r.failed.length ? ` Couldn't read: ${r.failed.join('; ')}` : ''} (${r.seconds}s)`, r.done.length ? '' : 'err');
       if (r.done.length) replyOpen(r.done[r.done.length - 1].file);
+      renderMedia();
     } else if (lane === 'fetch') {
       setReply('Reading links…', 'busy');
       const r = await window.nou.fetchPages({ id: state.id, text });
       addChips(r.kept);
+      renderMedia();
       setReply(`${r.kept.length ? `Saved and attached: ${r.kept.map((k) => `${k.name} (${k.kind}, ${Math.round(k.chars / 1000)}k chars)`).join(', ')}.` : 'Nothing saved.'}${r.failed.length ? ` Couldn't read: ${r.failed.join('; ')}` : ''}`, r.kept.length ? '' : 'err');
     } else if (lane === 'research') {
       setReply(`Researching with ${modelName}: planning searches…`, 'busy');
@@ -426,7 +471,7 @@ function renderChips() {
     `<span class="chip" title="${esc(f.name)}${f.text ? '' : ' (name only: not a text file)'}"><span>${esc(f.name)}</span><button type="button" data-i="${i}" aria-label="Remove ${esc(f.name)}">×</button></span>`).join('');
   for (const b of $('ask-chips').querySelectorAll('button')) b.onclick = () => { ask.files.splice(Number(b.dataset.i), 1); renderChips(); };
 }
-function setReply(text, cls = '') { $('ask-reply').textContent = text; $('ask-reply').closest('.dock-reply').className = `dock-mod dock-reply ${cls}`; }
+function setReply(text, cls = '') { $('ask-reply').textContent = String(text).replace(/\*\*([^*]+)\*\*/g, '$1'); $('ask-reply').closest('.dock-reply').className = `dock-mod dock-reply ${cls}`; }
 function growAsk() { const t = $('ask-text'); t.style.height = 'auto'; t.style.height = `${Math.min(140, t.scrollHeight)}px`; }
 $('ask-attach').onclick = async () => { ask.files.push(...await window.nou.attach()); renderChips(); };
 $('ask-text').addEventListener('input', growAsk);

@@ -102,3 +102,12 @@ default); search uses `EXA_API_KEY_2`/`_3`, then `TAVILY_API_KEY`. Keys are read
 - **Digest**: works out what each link is at runtime (`tools/digest_resolve.py`): YouTube captions, audio or video
   transcribed locally with faster-whisper (no paid API), PDFs, or web pages. Writes `digest_*.md` with timestamps.
   Needs `~/.nougen/venvs/digest` (`faster-whisper yt-dlp youtube-transcript-api pypdf`); without it, links are read as pages.
+
+## Media sources
+
+Web fetch and Digest also collect the media a link points to: a page's preview image, inline photos (largest
+`srcset` entry), `<video>`/`<audio>` sources and posters, YouTube/Vimeo/X/TikTok/Loom embeds, and linked media
+files or PDFs. A video or audio link keeps its thumbnail. Photos are downloaded to the story's `media/` folder
+(icons, trackers and anything under 6 KB skipped); everything is listed in `media.json`. The **Media sources** panel
+in the right rail filters by type, and each item can be opened, sent to Digest (video, audio, PDF), attached
+(downloaded photos), or copied as a `VIDEO:` line for a cue. Check the rights to any third-party picture before air.

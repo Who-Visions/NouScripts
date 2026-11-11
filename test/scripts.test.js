@@ -219,3 +219,25 @@ test('research lanes: links, file names, search plans and digest prompts', () =>
   const b = S.researchBriefMessages('Q?', [{ url: 'https://x', title: 'X', text: 'fact' }]);
   assert.match(b[1].content, /\[1\] X\nhttps:\/\/x\nfact/);
 });
+
+test('media: photos, videos, embeds and audio are pulled from a page, noise dropped', () => {
+  const html = `<meta property="og:image" content="/img/hero.jpg"><img src="/static/logo.png"><img src="a.webp" alt="Chart  of cost" width="800">
+    <img src="tiny.png" width="16"><img srcset="s.jpg 400w, l.jpg 1200w"><video src="/v/clip.mp4" poster="/v/p.jpg"></video>
+    <iframe src="https://www.youtube.com/embed/abcdefghijk"></iframe><a href="/pod/ep1.mp3">Episode 1</a><a href="/about">About</a>
+    <img src="data:image/png;base64,xx"><img src="/img/hero.jpg?w=2">`;
+  const m = S.extractMedia(html, 'https://news.example.com/story/1');
+  const urls = m.map((x) => `${x.kind} ${x.url}`);
+  assert.strictEqual(urls[0], 'image https://news.example.com/img/hero.jpg');
+  assert.ok(urls.includes('image https://news.example.com/story/a.webp'));
+  assert.ok(urls.includes('image https://news.example.com/story/l.jpg'), 'largest srcset entry');
+  assert.ok(urls.includes('video https://news.example.com/v/clip.mp4'));
+  assert.ok(urls.includes('image https://news.example.com/v/p.jpg'));
+  assert.ok(urls.includes('video https://www.youtube.com/embed/abcdefghijk'));
+  assert.ok(urls.includes('audio https://news.example.com/pod/ep1.mp3'));
+  assert.ok(!urls.some((u) => /logo|tiny|data:|about/.test(u)));
+  assert.strictEqual(urls.filter((u) => u.includes('hero.jpg')).length, 1, 'query-string duplicates collapse');
+  assert.strictEqual(m.find((x) => x.url.endsWith('a.webp')).label, 'Chart of cost');
+  const merged = S.mergeMedia([{ url: 'https://news.example.com/v/clip.mp4', kind: 'video' }], m, 'https://news.example.com/story/1');
+  assert.strictEqual(merged.length, m.length);
+  assert.strictEqual(merged[merged.length - 1].url, 'https://news.example.com/v/clip.mp4');
+});
