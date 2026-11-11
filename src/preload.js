@@ -1,6 +1,10 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Job ports: the main process sends one MessagePort per long job; hand it to the page (contextIsolation keeps
+// ipcRenderer out of the main world), where ui/src/lib/jobs.js picks it up by jobId.
+ipcRenderer.on('nou-job-port', (e, msg) => { window.postMessage({ type: 'nou-job-port', jobId: msg.jobId }, '*', e.ports); });
+
 contextBridge.exposeInMainWorld('nou', {
   list: () => ipcRenderer.invoke('stories:list'),
   load: (id, version) => ipcRenderer.invoke('script:load', { id, version }),

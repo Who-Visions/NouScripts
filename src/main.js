@@ -1,5 +1,6 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain } = require('electron');
+const { AsyncLocalStorage } = require('async_hooks');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
@@ -128,6 +129,30 @@ function readAttachment(a) {
   return { name: a.name, text: t.replace(/\s+/g, ' ').trim().slice(0, 24000) };
 }
 
+// ── Live jobs over MessagePorts ──────────────────────────────────────────────
+// Each long job (fetch, digest, research, edit) gets its own MessageChannelMain. One end goes to the window
+// (forwarded into the page by the preload); the job streams named steps over it, and the window can send
+// {type:'cancel'}. AsyncLocalStorage carries the job's abort signal and progress poster into every helper.
+const jobs = new AsyncLocalStorage();
+const step = (text) => { const j = jobs.getStore(); if (j) j.post({ type: 'step', text }); };
+const jobSignal = () => { const j = jobs.getStore(); return j ? j.signal : null; };
+const sig = (ms) => { const j = jobSignal(); return j ? AbortSignal.any([AbortSignal.timeout(ms), j]) : AbortSignal.timeout(ms); };
+const checkCancel = () => { const j = jobSignal(); if (j && j.aborted) throw new Error('Cancelled.'); };
+function withJob(event, jobId, fn) {
+  if (!jobId) return fn();
+  const { port1, port2 } = new MessageChannelMain();
+  const ac = new AbortController(); const t0 = Date.now();
+  const post = (msg) => { try { port1.postMessage({ ...msg, t: Math.round((Date.now() - t0) / 100) / 10 }); } catch { /* window gone */ } };
+  port1.on('message', (m) => { if (m.data && m.data.type === 'cancel' && !ac.signal.aborted) { ac.abort(new Error('Cancelled.')); post({ type: 'step', text: 'Cancelling…' }); } });
+  port1.start();
+  event.sender.postMessage('nou-job-port', { jobId }, [port2]);
+  return jobs.run({ signal: ac.signal, post }, async () => {
+    try { const r = await fn(); post({ type: 'done' }); return r; }
+    catch (err) { const msg = ac.signal.aborted ? 'Cancelled.' : err.message; post({ type: 'error', text: msg }); throw new Error(msg); }
+    finally { setTimeout(() => port1.close(), 200); }
+  });
+}
+
 async function nvidiaChat(model, messages, maxTokens = 3000) {
   nvidiaKey = nvidiaKey || await keymakerGet('NVIDIA_API_KEY');
   const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
@@ -137,7 +162,7 @@ async function nvidiaChat(model, messages, maxTokens = 3000) {
     // answer came back empty. These lanes need the answer, so reasoning is off for it.
     body: JSON.stringify({ model, messages, temperature: 0.3, max_tokens: maxTokens,
       ...(/nemotron/i.test(model) ? { chat_template_kwargs: { enable_thinking: false } } : {}) }),
-    signal: AbortSignal.timeout(180000),
+    signal: sig(180000),
   });
   if (!res.ok) throw new Error(`NVIDIA ${res.status}${res.status === 404 ? ': this account cannot call that model' : ''}`);
   const d = await res.json();
@@ -157,7 +182,7 @@ async function exa(pathname, body) {
     let key; try { key = await keymakerGet(name); } catch { deadKeys.add(name); continue; }
     const res = await fetch(`https://api.exa.ai${pathname}`, {
       method: 'POST', headers: { 'x-api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body), signal: AbortSignal.timeout(45000),
+      body: JSON.stringify(body), signal: sig(45000),
     });
     if (res.status === 401 || res.status === 403 || res.status === 402) { deadKeys.add(name); continue; }
     if (!res.ok) throw new Error(`Exa ${res.status}`);
@@ -169,7 +194,7 @@ async function tavilySearch(query, n) {
   const key = await keymakerGet('TAVILY_API_KEY');
   const res = await fetch('https://api.tavily.com/search', {
     method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, max_results: n, search_depth: 'advanced', include_raw_content: true }), signal: AbortSignal.timeout(45000),
+    body: JSON.stringify({ query, max_results: n, search_depth: 'advanced', include_raw_content: true }), signal: sig(45000),
   });
   if (!res.ok) throw new Error(`Tavily ${res.status}`);
   const d = await res.json();
@@ -184,7 +209,7 @@ async function readPage(url) {
   const d = await exa('/contents', { urls: [url], text: { maxCharacters: 40000 } }).catch(() => null);
   const r = d && d.results && d.results[0];
   if (r && r.text) return { url, title: r.title || url, text: r.text, lane: 'Exa' };
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 NouScripts' }, signal: AbortSignal.timeout(30000) });
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 NouScripts' }, signal: sig(30000) });
   if (!res.ok) throw new Error(`${new URL(url).hostname} answered ${res.status}`);
   const html = await res.text();
   const title = (/<title[^>]*>([^<]*)/i.exec(html) || [])[1] || url;
@@ -199,7 +224,7 @@ const RESOLVER = path.join(__dirname, '..', 'tools', 'digest_resolve.py');
 function runResolver(url) {
   return new Promise((resolve) => {
     if (!fs.existsSync(DIGEST_PY)) return resolve({ kind: 'page', lane: 'web', url, title: url, text: '' });
-    execFile(DIGEST_PY, ['-I', RESOLVER, url, '--max-minutes', '45'], { timeout: 30 * 60 * 1000, maxBuffer: 64 * 1024 * 1024, cwd: require('os').tmpdir() },
+    execFile(DIGEST_PY, ['-I', RESOLVER, url, '--max-minutes', '45'], { timeout: 30 * 60 * 1000, maxBuffer: 64 * 1024 * 1024, cwd: require('os').tmpdir(), ...(jobSignal() ? { signal: jobSignal() } : {}) },
       (err, out) => {
         try { resolve(JSON.parse(out)); } catch { resolve({ kind: 'error', url, title: url, note: err ? err.message.split('\n')[0] : 'resolver gave no answer' }); }
       });
@@ -215,7 +240,7 @@ async function resolveLink(url) {
 function mediaFile(story) { return path.join(story.dir, 'media.json'); }
 function readMedia(story) { try { return JSON.parse(fs.readFileSync(mediaFile(story), 'utf8')); } catch { return []; } }
 async function downloadImage(story, m) {
-  const res = await fetch(m.url, { headers: { 'User-Agent': 'Mozilla/5.0 NouScripts' }, signal: AbortSignal.timeout(20000) });
+  const res = await fetch(m.url, { headers: { 'User-Agent': 'Mozilla/5.0 NouScripts' }, signal: sig(20000) });
   if (!res.ok) return null;
   const type = (res.headers.get('content-type') || '').split(';')[0];
   if (!type.startsWith('image/') || /svg|icon/.test(type)) return null;
@@ -234,7 +259,7 @@ async function collectMedia(story, url, item) {
     if (item.thumbnail) found.push({ url: item.thumbnail, kind: 'image', label: `Thumbnail: ${item.title}`, via: 'thumbnail' });
   } else if (item.kind === 'page') {
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 NouScripts' }, signal: AbortSignal.timeout(20000) });
+      const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 NouScripts' }, signal: sig(20000) });
       if (res.ok && /html/i.test(res.headers.get('content-type') || '')) found = S.extractMedia(await res.text(), url);
     } catch { /* the text was still read; this page just gives no media */ }
   }
@@ -299,7 +324,8 @@ function keepSource(story, page, prefix) {
   return { id, name: path.basename(file), text: true };
 }
 
-ipcMain.handle('lane:fetch', async (_e, { id, text }) => {
+ipcMain.handle('lane:fetch', (_e, __req) => withJob(_e, __req && __req.jobId, async () => {
+  const { id, text } = __req;
   const story = storyById(id);
   if (!story) throw new Error('story not found');
   const urls = S.extractUrls(text);
@@ -307,17 +333,20 @@ ipcMain.handle('lane:fetch', async (_e, { id, text }) => {
   const kept = []; const failed = [];
   await Promise.all(urls.slice(0, 8).map(async (u) => {
     try {
+      step(`Reading ${new URL(u).hostname.replace(/^www\./, '')}: working out what it is`);
       const pg = await resolveLink(u);
+      step(`Read ${pg.kind} via ${pg.lane}; collecting photos and video`);
       const media = await collectMedia(story, u, pg);
       kept.push({ ...keepSource(story, pg, KIND_PREFIX[pg.kind] || 'web'), url: u, title: pg.title, chars: pg.text.length, kind: pg.kind, lane: pg.lane, media });
     }
-    catch (err) { failed.push(`${u} (${err.message})`); }
+    catch (err) { if (jobSignal() && jobSignal().aborted) throw new Error('Cancelled.'); failed.push(`${u} (${err.message})`); }
   }));
   return { kept, failed };
-});
+}));
 
 // Digest: resolve each link, keep its text in sources/, and write a cited digest next to the script.
-ipcMain.handle('lane:digest', async (_e, { id, version, text, cues, model }) => {
+ipcMain.handle('lane:digest', (_e, __req) => withJob(_e, __req && __req.jobId, async () => {
+  const { id, version, text, cues, model } = __req;
   const story = storyById(id);
   if (!story) throw new Error('story not found');
   const urls = S.extractUrls(text);
@@ -325,10 +354,14 @@ ipcMain.handle('lane:digest', async (_e, { id, version, text, cues, model }) => 
   const t0 = Date.now(); const done = []; const failed = [];
   for (const u of urls.slice(0, 5)) {
     try {
+      checkCancel();
+      step(`Link ${done.length + failed.length + 1}/${Math.min(urls.length, 5)}: working out what it is (captions, transcript, PDF or page)`);
       const item = await resolveLink(u);
+      step(`Read ${item.kind} via ${item.lane}, ${item.text.length.toLocaleString()} chars; collecting media`);
       if (!item.text.trim()) throw new Error('no readable text');
       const src = keepSource(story, item, KIND_PREFIX[item.kind] || 'web');
       const media = await collectMedia(story, u, item);
+      step(`Digesting with ${model.split('/').pop()}`);
       const body = (await nvidiaChat(model, S.digestMessages(item, cues), 3000)).replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
       const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, '');
       const file = path.join(story.dir, `digest_${stamp}_${S.sourceFileName(u, item.kind).replace(/\.txt$/, '')}.md`);
@@ -336,17 +369,20 @@ ipcMain.handle('lane:digest', async (_e, { id, version, text, cues, model }) => 
       const did = require('crypto').randomUUID(); attached.set(did, { name: path.basename(file), path: file });
       const what = (/## What it is\s*\n([\s\S]*?)(\n## |$)/.exec(body) || [])[1] || '';
       done.push({ url: u, kind: item.kind, lane: item.lane, title: item.title, file, what: what.trim(), media, chips: [{ id: did, name: path.basename(file), text: true }, src] });
-    } catch (err) { failed.push(`${u} (${err.message})`); }
+    } catch (err) { if (jobSignal() && jobSignal().aborted) throw new Error('Cancelled.'); failed.push(`${u} (${err.message})`); }
   }
   return { done, failed, seconds: Math.round((Date.now() - t0) / 100) / 10 };
-});
+}));
 
-ipcMain.handle('lane:research', async (_e, { id, version, question, cues, model }) => {
+ipcMain.handle('lane:research', (_e, __req) => withJob(_e, __req && __req.jobId, async () => {
+  const { id, version, question, cues, model } = __req;
   const story = storyById(id);
   if (!story) throw new Error('story not found');
   if (!String(question || '').trim()) throw new Error('ask a research question');
   const t0 = Date.now();
+  step('Planning searches');
   const queries = S.parsePlan(await nvidiaChat(model, S.researchPlanMessages(question, story.title), 400), question);
+  step(`Searching ${queries.length} queries (Exa, Tavily backup)`);
   const found = await Promise.all(queries.map((q) => search(q, 4).catch(() => ({ lane: 'none', results: [] }))));
   const seen = new Set(); const sources = [];
   for (const f of found) for (const r of f.results) {
@@ -355,6 +391,7 @@ ipcMain.handle('lane:research', async (_e, { id, version, question, cues, model 
   }
   if (!sources.length) throw new Error('no sources came back from Exa or Tavily');
   const top = sources.slice(0, 10);
+  step(`Reading ${top.length} sources; writing the cited brief`);
   const brief = await nvidiaChat(model, S.researchBriefMessages(question, top, cues), 4000);
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, '');
   const file = path.join(story.dir, `research_${stamp}.md`);
@@ -364,20 +401,22 @@ ipcMain.handle('lane:research', async (_e, { id, version, question, cues, model 
   attached.set(briefId, { name: path.basename(file), path: file });
   const answer = (/## Answer\s*\n([\s\S]*?)(\n## |$)/.exec(brief) || [])[1] || brief.slice(0, 600);
   return { file, brief: { id: briefId, name: path.basename(file), text: true }, answer: answer.trim(), queries, sources: top.length, lanes: [...new Set(found.map((f) => f.lane))], seconds: Math.round((Date.now() - t0) / 100) / 10 };
-});
+}));
 
-ipcMain.handle('ask:send', async (_e, { id, version, cues, instruction, attachmentIds = [], model }) => {
+ipcMain.handle('ask:send', (_e, __req) => withJob(_e, __req && __req.jobId, async () => {
+  const { id, version, cues, instruction, attachmentIds = [], model } = __req;
   const story = storyById(id);
   if (!story) throw new Error('story not found');
   if (!String(instruction || '').trim()) throw new Error('say what to change');
   const files = attachmentIds.map((a) => attached.get(a)).filter(Boolean).map(readAttachment);
   const t0 = Date.now();
+  step(`Asking ${model.split('/').pop()}${files.length ? ` with ${files.length} attachment${files.length === 1 ? '' : 's'}` : ''}`);
   const out = S.parseAskReply(await nvidiaChat(model, S.buildAskMessages(cues, instruction, files)), cues.map((c) => c.n));
   // Keep a record next to the story: what was asked, of which version, and what came back.
   const log = path.join(story.dir, 'producer_log.jsonl');
   fs.appendFileSync(log, JSON.stringify({ at: new Date().toISOString(), version, model, instruction, attachments: files.map((f) => f.name), ...out }) + '\n');
   return { ...out, model, seconds: Math.round((Date.now() - t0) / 100) / 10 };
-});
+}));
 
 ipcMain.handle('script:exportClap', (_e, { id, version }) => {
   const story = storyById(id);

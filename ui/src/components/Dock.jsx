@@ -1,6 +1,7 @@
 // Bottom band, three modules: lane and model (left), the producer input with + and Digest (centre), the last reply (right).
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowUp, ChevronDown, Plus, Sparkles, Globe, Search, PenLine, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, Plus, Sparkles, Globe, Search, PenLine, X, Square } from 'lucide-react';
+import { startJob } from '@/lib/jobs';
 import { cn } from '@/lib/utils';
 import { cleanErr } from '@/lib/text';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,8 @@ export default function Dock({ nou }) {
   const [model, setModel] = useState(MODELS[0][0]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const jobRef = useRef(null);
+  const [live, setLive] = useState(null); // { text, t0 } while a job streams steps
   const box = useRef(null);
   useLayoutEffect(() => { const t = box.current; if (t) { t.style.height = 'auto'; t.style.height = `${Math.min(140, t.scrollHeight)}px`; } }, [text]);
   const modelName = MODELS.find((m) => m[0] === model)[1];
@@ -32,7 +35,11 @@ export default function Dock({ nou }) {
   async function run(which, value) {
     if (busy || !nou.data) return;
     setBusy(true);
-    const base = { id: nou.id, version: nou.version, model };
+    // A MessagePort per job: the main process streams named steps and listens for Cancel.
+    const job = startJob((ev) => { if (ev.type === 'step') setLive((l) => ({ text: ev.text, t0: l ? l.t0 : Date.now() })); });
+    jobRef.current = job;
+    setLive({ text: 'Starting…', t0: Date.now() });
+    const base = { id: nou.id, version: nou.version, model, jobId: job.jobId };
     try {
       if (which === 'edit') {
         nou.setReply(`Asking ${modelName}…`, 'busy');
@@ -42,7 +49,7 @@ export default function Dock({ nou }) {
         nou.setReply(`${n ? `${n} line${n === 1 ? '' : 's'} suggested: ${Object.keys(r.edits).map((k) => `#${k}`).join(', ')}. Review in Write, then save or discard.` : 'No line changes.'}${r.note ? ` ${r.note}` : ''} (${r.seconds}s)`);
       } else if (which === 'fetch') {
         nou.setReply('Reading links…', 'busy');
-        const r = await window.nou.fetchPages({ id: nou.id, text: value });
+        const r = await window.nou.fetchPages({ id: nou.id, text: value, jobId: job.jobId });
         nou.addChips(r.kept);
         nou.setReply(`${r.kept.length ? `Saved and attached: ${r.kept.map((k) => `${k.name} (${k.kind}, ${Math.round(k.chars / 1000)}k chars)`).join(', ')}.` : 'Nothing saved.'}${r.failed.length ? ` Couldn't read: ${r.failed.join('; ')}` : ''}`, r.kept.length ? '' : 'err');
         nou.refreshAux();
@@ -63,10 +70,13 @@ export default function Dock({ nou }) {
       }
       setText('');
     } catch (err) {
-      nou.setReply(`Didn't work: ${cleanErr(err)}`, 'err');
-    } finally { setBusy(false); }
+      const msg = cleanErr(err);
+      nou.setReply(msg === 'Cancelled.' ? 'Cancelled. Nothing was saved from the unfinished step.' : `Didn't work: ${msg}`, msg === 'Cancelled.' ? '' : 'err');
+    } finally { job.end(); jobRef.current = null; setLive(null); setBusy(false); }
   }
   const runRef = useRef(run); runRef.current = run;
+  const [, tick] = useState(0);
+  useEffect(() => { if (!live) return undefined; const t = setInterval(() => tick((n) => n + 1), 1000); return () => clearInterval(t); }, [live]);
 
   // A media tile's Digest button lands here.
   useEffect(() => {
@@ -129,7 +139,11 @@ export default function Dock({ nou }) {
             className="max-h-[140px] min-h-8 flex-1 resize-none bg-transparent px-0.5 py-[5px] font-read text-[15px] leading-[22px] outline-none placeholder:text-faint" />
           <Button type="button" variant="outline" size="sm" className="h-8 flex-none gap-1.5 hover:border-nou hover:text-nou" disabled={busy} onClick={digest}
             title="Digest the links in the box: page, PDF, YouTube, audio or video"><Sparkles className="size-4" />Digest</Button>
-          <Button type="submit" variant="outline" size="icon" className="size-8 flex-none hover:border-gold hover:text-gold" disabled={busy || !text.trim()} aria-label="Send" title="Send (Enter)"><ArrowUp className="size-4" /></Button>
+          {busy ? (
+            <Button type="button" variant="outline" size="icon" className="size-8 flex-none border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => jobRef.current && jobRef.current.cancel()} aria-label="Stop" title="Stop this job"><Square className="size-3.5 fill-current" /></Button>
+          ) : (
+            <Button type="submit" variant="outline" size="icon" className="size-8 flex-none hover:border-gold hover:text-gold" disabled={!text.trim()} aria-label="Send" title="Send (Enter)"><ArrowUp className="size-4" /></Button>
+          )}
         </div>
       </form>
 
@@ -137,8 +151,8 @@ export default function Dock({ nou }) {
         <div className="mb-0.5 text-[10px] uppercase tracking-[1.2px] text-faint">Last reply</div>
         <div className={cn('line-clamp-2 text-xs leading-snug break-words text-muted-foreground hover:line-clamp-none',
           nou.reply.tone === 'busy' && 'text-gold', nou.reply.tone === 'err' && 'text-destructive')}>
-          {nou.reply.text}
-          {nou.reply.file && <Button variant="outline" size="sm" className="ml-1.5 h-5 px-1.5 text-[11px]" onClick={() => window.nou.open(nou.reply.file)}>Open</Button>}
+          {live ? <span className="text-gold">{live.text} · {Math.round((Date.now() - live.t0) / 1000)}s</span> : nou.reply.text}
+          {!live && nou.reply.file && <Button variant="outline" size="sm" className="ml-1.5 h-5 px-1.5 text-[11px]" onClick={() => window.nou.open(nou.reply.file)}>Open</Button>}
         </div>
       </section>
     </footer>

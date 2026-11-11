@@ -127,3 +127,11 @@ Digest, the last reply).
 
 Component drafts were requested from free NouGenOpen lanes (`design/draft_component.py`, `design/draft_all.sh`,
 contract in `design/react_spec.md`); `IconRail.jsx` was kept from a draft, the rest were rewritten in review.
+
+## Live jobs over MessagePorts
+
+Fetch, Digest, Research and Edit each open their own `MessageChannelMain` (`withJob` in `src/main.js`). One port
+goes to the window (`src/preload.js` forwards it into the page, as the Electron MessagePorts guide shows for
+context-isolated pages; `ui/src/lib/jobs.js` picks it up by job id). The job streams named steps, which the dock
+shows live with elapsed time, and the dock's Stop button sends `{type: 'cancel'}`: every network call in the job
+and the local transcription process are aborted through one `AbortSignal` carried by `AsyncLocalStorage`.
