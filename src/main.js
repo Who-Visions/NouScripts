@@ -141,7 +141,8 @@ async function nvidiaChat(model, messages, maxTokens = 3000) {
   });
   if (!res.ok) throw new Error(`NVIDIA ${res.status}${res.status === 404 ? ': this account cannot call that model' : ''}`);
   const d = await res.json();
-  const content = (d.choices?.[0]?.message?.content || '').trim();
+  // Dave reads these; asterisks (bold, italics, star bullets) are stripped whatever the model does.
+  const content = (d.choices?.[0]?.message?.content || '').replace(/\*\*([^*\n]+)\*\*/g, '$1').replace(/(^|\s)\*([^*\n]+)\*(?=[\s.,;:!?)]|$)/g, '$1$2').replace(/^(\s*)\* /gm, '$1- ').trim();
   if (!content) throw new Error(`${model.split('/').pop()} returned an empty answer (${d.choices?.[0]?.finish_reason || 'no reason given'})`);
   return content;
 }

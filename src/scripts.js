@@ -470,6 +470,7 @@ function researchBriefMessages(question, sources, cues = []) {
     { role: 'system', content: [
       'You are the research desk for NouGen News. Write a short research brief in Markdown from the numbered sources only.',
       'Every factual sentence ends with its source number(s) like [2]. If sources disagree, say so. If the question is not answered by the sources, say that plainly. Never use outside knowledge.',
+      'Plain text only: no asterisks, no bold or italics; use - for list items.',
       'Sections: "## Answer" (3 to 6 sentences), "## Usable lines" (bullets: a fact Nou could say aloud, with source number), "## Check against the script" (bullets: any script line the sources support, contradict or update, by cue number; write "Nothing to flag." if none), "## Sources" (numbered list: title and URL).',
     ].join('\n') },
     { role: 'user', content: `QUESTION:\n${String(question).trim()}\n\nCURRENT SCRIPT:\n${script || '(none)'}\n\nSOURCES:\n${src}` },
@@ -482,6 +483,7 @@ function digestMessages(item, cues = []) {
     { role: 'system', content: [
       'You are the digest desk for NouGen News. Digest ONE item (a web page, PDF, video or audio transcript) for a reporter. Use only the item text; no outside knowledge.',
       'If the text has [hh:mm:ss] timestamps, cite them for each point. Machine transcripts mishear names: flag any name that looks misheard instead of repeating it as fact.',
+      'Plain text only: no asterisks, no bold or italics; use - for list items.',
       'Markdown sections: "## What it is" (one or two sentences: who, what, when), "## Key points" (5 to 8 bullets), "## Usable lines" (bullets: facts Nou could say aloud, each with its timestamp or section), "## Check against the script" (bullets by cue number: supports, contradicts or updates; "Nothing to flag." if none).',
     ].join('\n') },
     { role: 'user', content: `ITEM: ${item.title}\n${item.url}\nKind: ${item.kind} (${item.lane})\n\nCURRENT SCRIPT:\n${script || '(none)'}\n\nTEXT:\n${String(item.text).slice(0, 60000)}` },
