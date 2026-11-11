@@ -92,21 +92,22 @@ def main():
     m = YOUTUBE.search(url)
     if m:
         vid = m.group(1)
-        title = url
+        title, thumb = url, ""
         try:
-            title = (yt_info(url) or {}).get("title") or url
+            yi = yt_info(url) or {}
+            title, thumb = yi.get("title") or url, yi.get("thumbnail") or ""
         except Exception:
             pass
         try:
             segs = youtube_captions(vid)
-            out(kind="youtube", lane="captions", title=title, url=url, segments=segs,
+            out(kind="youtube", lane="captions", title=title, url=url, segments=segs, thumbnail=thumb,
                 text=" ".join(f"[{s['t']}] {s['text']}" for s in segs))
         except Exception as e:
             cap_err = str(e).splitlines()[0][:120]
         with tempfile.TemporaryDirectory() as tmp:
             try:
                 info, segs = transcribe(url, max_minutes, tmp)
-                out(kind="youtube", lane="whisper (no captions)", title=info.get("title") or title, url=url, segments=segs,
+                out(kind="youtube", lane="whisper (no captions)", title=info.get("title") or title, url=url, segments=segs, thumbnail=info.get("thumbnail") or thumb,
                     text=" ".join(f"[{s['t']}] {s['text']}" for s in segs), note=f"captions unavailable: {cap_err}")
             except Exception as e:
                 out(kind="error", lane="youtube", url=url, title=title, note=f"captions: {cap_err}; audio: {str(e)[:160]}")
@@ -136,6 +137,7 @@ def main():
             try:
                 info, segs = transcribe(url, max_minutes, tmp)
                 out(kind="media", lane=f"whisper · {info.get('extractor_key') or 'direct'}", title=info.get("title") or url, url=url,
+                    thumbnail=info.get("thumbnail") or "", has_video=bool(info.get("vcodec") not in (None, "none") or info.get("width")),
                     segments=segs, text=" ".join(f"[{s['t']}] {s['text']}" for s in segs))
             except Exception as e:
                 out(kind="error", lane="media", url=url, title=url, note=str(e)[:200])

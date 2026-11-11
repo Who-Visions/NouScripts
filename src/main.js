@@ -208,8 +208,66 @@ async function resolveLink(url) {
   const r = await runResolver(url);
   if (r.kind === 'error') throw new Error(r.note || 'could not read it');
   if (r.kind === 'page') { const pg = await readPage(url); return { ...pg, kind: 'page', lane: `web · ${pg.lane}` }; }
-  return { url, title: r.title || url, text: r.text || '', kind: r.kind, lane: r.lane, note: r.note };
+  return { url, title: r.title || url, text: r.text || '', kind: r.kind, lane: r.lane, note: r.note, thumbnail: r.thumbnail, hasVideo: r.has_video };
 }
+// ── Media sources: photos, videos, audio and embeds found while reading a link ──
+function mediaFile(story) { return path.join(story.dir, 'media.json'); }
+function readMedia(story) { try { return JSON.parse(fs.readFileSync(mediaFile(story), 'utf8')); } catch { return []; } }
+async function downloadImage(story, m) {
+  const res = await fetch(m.url, { headers: { 'User-Agent': 'Mozilla/5.0 NouScripts' }, signal: AbortSignal.timeout(20000) });
+  if (!res.ok) return null;
+  const type = (res.headers.get('content-type') || '').split(';')[0];
+  if (!type.startsWith('image/') || /svg|icon/.test(type)) return null;
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length < 6000 || buf.length > 15 * 1024 * 1024) return null; // icons and huge originals are not useful here
+  const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' }[type] || 'img';
+  const dir = path.join(story.dir, 'media'); fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${require('crypto').createHash('sha1').update(m.url).digest('hex').slice(0, 12)}.${ext}`);
+  fs.writeFileSync(file, buf);
+  return path.relative(story.dir, file);
+}
+async function collectMedia(story, url, item) {
+  let found = [];
+  if (item.kind === 'youtube' || item.kind === 'media') {
+    found.push({ url, kind: item.kind === 'youtube' || item.hasVideo ? 'video' : 'audio', label: item.title, via: 'source' });
+    if (item.thumbnail) found.push({ url: item.thumbnail, kind: 'image', label: `Thumbnail: ${item.title}`, via: 'thumbnail' });
+  } else if (item.kind === 'page') {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 NouScripts' }, signal: AbortSignal.timeout(20000) });
+      if (res.ok && /html/i.test(res.headers.get('content-type') || '')) found = S.extractMedia(await res.text(), url);
+    } catch { /* the text was still read; this page just gives no media */ }
+  }
+  if (!found.length) return { added: 0 };
+  const list = S.mergeMedia(readMedia(story), found, url);
+  const fresh = list.filter((m) => m.source === url && !m.file);
+  let saved = 0;
+  for (const m of fresh.filter((x) => x.kind === 'image').slice(0, 12)) {
+    try { const f = await downloadImage(story, m); if (f) { m.file = f; saved++; } } catch { /* keep the link */ }
+  }
+  fs.writeFileSync(mediaFile(story), JSON.stringify(list, null, 2) + '\n');
+  return { added: found.length, saved };
+}
+
+ipcMain.handle('media:list', (_e, { id }) => {
+  const story = storyById(id);
+  if (!story) return [];
+  return readMedia(story).map((m) => ({ ...m, path: m.file ? path.join(story.dir, m.file) : null }));
+});
+ipcMain.handle('media:attach', (_e, { id, url }) => {
+  const story = storyById(id);
+  const m = story && readMedia(story).find((x) => x.url === url);
+  if (!m || !m.file) throw new Error('only downloaded photos can be attached');
+  const aid = require('crypto').randomUUID();
+  attached.set(aid, { name: path.basename(m.file), path: path.join(story.dir, m.file) });
+  return { id: aid, name: path.basename(m.file), text: false };
+});
+ipcMain.handle('media:open', (_e, { id, url }) => {
+  const story = storyById(id);
+  const m = story && readMedia(story).find((x) => x.url === url);
+  if (m && m.file) return shell.openPath(path.join(story.dir, m.file));
+  if (/^https:\/\//.test(url)) return shell.openExternal(url);
+});
+
 const KIND_PREFIX = { youtube: 'video', media: 'media', pdf: 'pdf', page: 'web' };
 
 // Save a page into the story's sources/ and register it as an attachment for the next edit.
@@ -229,7 +287,11 @@ ipcMain.handle('lane:fetch', async (_e, { id, text }) => {
   if (!urls.length) throw new Error('paste one or more links to fetch');
   const kept = []; const failed = [];
   await Promise.all(urls.slice(0, 8).map(async (u) => {
-    try { const pg = await resolveLink(u); kept.push({ ...keepSource(story, pg, KIND_PREFIX[pg.kind] || 'web'), url: u, title: pg.title, chars: pg.text.length, kind: pg.kind, lane: pg.lane }); }
+    try {
+      const pg = await resolveLink(u);
+      const media = await collectMedia(story, u, pg);
+      kept.push({ ...keepSource(story, pg, KIND_PREFIX[pg.kind] || 'web'), url: u, title: pg.title, chars: pg.text.length, kind: pg.kind, lane: pg.lane, media });
+    }
     catch (err) { failed.push(`${u} (${err.message})`); }
   }));
   return { kept, failed };
@@ -247,13 +309,14 @@ ipcMain.handle('lane:digest', async (_e, { id, version, text, cues, model }) => 
       const item = await resolveLink(u);
       if (!item.text.trim()) throw new Error('no readable text');
       const src = keepSource(story, item, KIND_PREFIX[item.kind] || 'web');
+      const media = await collectMedia(story, u, item);
       const body = (await nvidiaChat(model, S.digestMessages(item, cues), 3000)).replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
       const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*/, '');
       const file = path.join(story.dir, `digest_${stamp}_${S.sourceFileName(u, item.kind).replace(/\.txt$/, '')}.md`);
       fs.writeFileSync(file, `# Digest: ${item.title}\n\n${u}\n${item.kind} · read via ${item.lane}${item.note ? ` · ${item.note}` : ''} · ${item.text.length.toLocaleString()} chars · for v${version} · ${S.easternTime(new Date())} · ${model}\nFull text: sources/${src.name}\n\n${body}\n`);
       const did = require('crypto').randomUUID(); attached.set(did, { name: path.basename(file), path: file });
       const what = (/## What it is\s*\n([\s\S]*?)(\n## |$)/.exec(body) || [])[1] || '';
-      done.push({ url: u, kind: item.kind, lane: item.lane, title: item.title, file, what: what.trim(), chips: [{ id: did, name: path.basename(file), text: true }, src] });
+      done.push({ url: u, kind: item.kind, lane: item.lane, title: item.title, file, what: what.trim(), media, chips: [{ id: did, name: path.basename(file), text: true }, src] });
     } catch (err) { failed.push(`${u} (${err.message})`); }
   }
   return { done, failed, seconds: Math.round((Date.now() - t0) / 100) / 10 };

@@ -488,7 +488,66 @@ function digestMessages(item, cues = []) {
   ];
 }
 
+// ── Media found while scraping ─────────────────────────────────────────────
+const IMG_EXT = /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i;
+const VID_EXT = /\.(mp4|m4v|mov|webm|m3u8)(\?|#|$)/i;
+const AUD_EXT = /\.(mp3|m4a|aac|wav|ogg|opus|flac)(\?|#|$)/i;
+const EMBED = /(youtube\.com\/(embed|watch)|youtu\.be\/|player\.vimeo\.com|vimeo\.com\/\d|x\.com\/.+\/status|twitter\.com\/.+\/status|tiktok\.com\/|loom\.com\/(share|embed))/i;
+const NOISE = /(sprite|icon|logo|favicon|avatar|pixel|tracking|spacer|badge|emoji|1x1|gravatar)/i;
+
+function mediaKind(u) {
+  if (IMG_EXT.test(u)) return 'image';
+  if (VID_EXT.test(u)) return 'video';
+  if (AUD_EXT.test(u)) return 'audio';
+  if (/\.pdf(\?|#|$)/i.test(u)) return 'pdf';
+  if (EMBED.test(u)) return 'video';
+  return null;
+}
+
+// Photos, videos, audio and embeds referenced by a page. Absolute URLs, de-duplicated, decorative noise dropped,
+// social preview images (og:/twitter:image) first because they are the page's own chosen picture.
+function extractMedia(html, baseUrl, limit = 40) {
+  const out = []; const seen = new Set();
+  const add = (raw, kind, label = '', from = '') => {
+    if (!raw || /^(data|blob|javascript):/i.test(raw)) return;
+    let u; try { u = new URL(raw.replace(/&amp;/g, '&').trim(), baseUrl).href; } catch { return; }
+    if (!/^https?:/i.test(u) || NOISE.test(u.split('?')[0]) || /\.(svg|ico)(\?|$)/i.test(u)) return;
+    const k = kind || mediaKind(u); if (!k) return;
+    const key = u.replace(/[?#].*$/, '');
+    if (seen.has(key)) return; seen.add(key);
+    out.push({ url: u, kind: k, label: String(label).replace(/\s+/g, ' ').trim().slice(0, 140), via: from });
+  };
+  const s = String(html || '');
+  for (const m of s.matchAll(/<meta[^>]+(?:property|name)=["'](?:og:image|og:image:url|twitter:image)["'][^>]*>/gi)) add((/content=["']([^"']+)/i.exec(m[0]) || [])[1], 'image', 'preview image', 'og');
+  for (const m of s.matchAll(/<meta[^>]+(?:property|name)=["'](?:og:video|og:video:url|twitter:player)["'][^>]*>/gi)) add((/content=["']([^"']+)/i.exec(m[0]) || [])[1], 'video', 'page video', 'og');
+  for (const m of s.matchAll(/<img\b[^>]*>/gi)) {
+    const tag = m[0];
+    const w = Number((/\bwidth=["']?(\d+)/i.exec(tag) || [])[1] || 0);
+    if (w && w < 120) continue;
+    const srcset = (/\bsrcset=["']([^"']+)/i.exec(tag) || [])[1];
+    const best = srcset ? srcset.split(',').map((x) => x.trim().split(/\s+/)[0]).pop() : null;
+    add(best || (/\b(?:data-src|src)=["']([^"']+)/i.exec(tag) || [])[1], 'image', (/\balt=["']([^"']*)/i.exec(tag) || [])[1] || '', 'img');
+  }
+  for (const m of s.matchAll(/<(?:video|audio|source)\b[^>]*>/gi)) {
+    const src = (/\bsrc=["']([^"']+)/i.exec(m[0]) || [])[1];
+    add(src, /^<audio/i.test(m[0]) ? 'audio' : null, 'embedded media', 'tag');
+    add((/\bposter=["']([^"']+)/i.exec(m[0]) || [])[1], 'image', 'video poster', 'tag');
+  }
+  for (const m of s.matchAll(/<iframe\b[^>]*\bsrc=["']([^"']+)/gi)) if (EMBED.test(m[1])) add(m[1], 'video', 'embedded video', 'iframe');
+  for (const m of s.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>([\s\S]{0,200}?)<\/a>/gi)) if (mediaKind(m[1])) add(m[1], null, m[2].replace(/<[^>]+>/g, ''), 'link');
+  return out.slice(0, limit);
+}
+
+// Merge new items into a story's media list, newest first, keeping what is already there.
+function mergeMedia(existing, items, source, now = new Date()) {
+  const list = Array.isArray(existing) ? existing.slice() : [];
+  const have = new Set(list.map((m) => m.url.replace(/[?#].*$/, '')));
+  const fresh = items.filter((m) => !have.has(m.url.replace(/[?#].*$/, ''))).map((m) => ({ ...m, source, added: now.toISOString() }));
+  return [...fresh, ...list];
+}
+
 module.exports = {
+  extractMedia, mergeMedia, mediaKind,
   digestMessages,
   extractUrls, sourceFileName, researchPlanMessages, parsePlan, researchBriefMessages,
   ASK_RULES, buildAskMessages, parseAskReply,
