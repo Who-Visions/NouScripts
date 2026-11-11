@@ -144,6 +144,12 @@ const checkCancel = () => { const j = jobSignal(); if (j && j.aborted) throw new
 let activeJobs = 0; // jobs streaming right now; an update never restarts the app under one
 // A local notification when a long job ends while the window is not in front. Local only: no push service, no
 // Apple account, nothing leaves the machine. Skipped when the window has focus, since the result is already on screen.
+// Electron security checklist item 17: only the app's own top-level page may ask for file or link actions.
+function fromAppPage(e) {
+  return Boolean(win && !win.isDestroyed() && e.sender === win.webContents && e.senderFrame && e.senderFrame.parent === null);
+}
+const denied = () => { throw new Error('Not allowed from this page'); };
+
 function notifyJob(label, ok, detail = '') {
   if (!Notification.isSupported()) return;
   if (win && !win.isDestroyed() && win.isFocused()) return;
@@ -321,7 +327,8 @@ ipcMain.handle('media:list', (_e, { id }) => {
   if (!story) return [];
   return readMedia(story).map((m) => ({ ...m, path: m.file ? path.join(story.dir, m.file) : null }));
 });
-ipcMain.handle('media:attach', (_e, { id, url }) => {
+ipcMain.handle('media:attach', (e, { id, url }) => {
+  if (!fromAppPage(e)) return denied();
   const story = storyById(id);
   const m = story && readMedia(story).find((x) => x.url === url);
   if (!m || !m.file) throw new Error('only downloaded photos can be attached');
@@ -329,7 +336,8 @@ ipcMain.handle('media:attach', (_e, { id, url }) => {
   attached.set(aid, { name: path.basename(m.file), path: path.join(story.dir, m.file) });
   return { id: aid, name: path.basename(m.file), text: false };
 });
-ipcMain.handle('media:open', (_e, { id, url }) => {
+ipcMain.handle('media:open', (e, { id, url }) => {
+  if (!fromAppPage(e)) return denied();
   const story = storyById(id);
   const m = story && readMedia(story).find((x) => x.url === url);
   if (m && m.file) return shell.openPath(path.join(story.dir, m.file)); // '' when opened, else the error text
@@ -449,9 +457,9 @@ ipcMain.handle('script:exportClap', (_e, { id, version }) => {
   return S.exportOpenClap(story.dir, version);
 });
 
-ipcMain.handle('file:reveal', (_e, p) => { if (inRoot(p)) shell.showItemInFolder(p); });
+ipcMain.handle('file:reveal', (e, p) => { if (!fromAppPage(e)) return denied(); if (inRoot(p)) shell.showItemInFolder(p); });
 // Resolves to '' when the file opened, else the reason (shell.openPath resolves with the error text).
-ipcMain.handle('file:open', async (_e, p) => (inRoot(p) ? shell.openPath(p) : 'That file is outside the story folder.'));
+ipcMain.handle('file:open', async (e, p) => { if (!fromAppPage(e)) return denied(); return inRoot(p) ? shell.openPath(p) : 'That file is outside the story folder.'; });
 
 function watchStories() {
   const root = S.storiesRoot();
@@ -505,7 +513,7 @@ const updater = createUpdater({
 });
 ipcMain.handle('updater:status', () => updater.status());
 ipcMain.handle('updater:check', () => updater.check());
-ipcMain.handle('updater:install', () => updater.install());
+ipcMain.handle('updater:install', (e) => (fromAppPage(e) ? updater.install() : denied()));
 
 // A display was plugged in, unplugged, or changed resolution/scale: re-fit the window to the usable area of the
 // display it is on, so it does not stay larger than the screen. Electron fires these on the screen module.
