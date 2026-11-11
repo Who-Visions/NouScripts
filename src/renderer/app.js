@@ -5,7 +5,7 @@ const state = {
   scrolling: null, speed: 40, query: '', filter: 'all',
   railCollapsed: localStorage.getItem('nou-rail-collapsed') === 'true',
   prompterMirror: false, prompterFontSize: 46,
-  writing: false, edits: {},
+  writing: false, edits: {}, view: 'read',
 };
 
 function esc(s) {
@@ -41,7 +41,7 @@ const nextVersion = () => Math.max(...state.data.story.versions) + 1;
 function setWriting(on, prefill = {}) {
   state.writing = on; state.edits = { ...prefill };
   if (on && !$('prompter').hidden) closePrompter();
-  setMode(on ? 'write' : 'read');
+  setMode(on ? 'write' : state.view);
   load();
 }
 
@@ -77,7 +77,7 @@ async function saveWriting() {
   try {
     const r = await window.nou.save(state.id, state.version, edits);
     state.writing = false; state.edits = {}; state.version = r.version; state.showChanges = true;
-    setMode('read');
+    setMode(state.view);
     await refresh(true);
   } catch (err) {
     $('write-status').textContent = `Save failed: ${err.message}`;
@@ -123,7 +123,7 @@ function renderStories() {
   }).join('');
   if (!visible.length) $('stories').innerHTML = `<div class="story-empty">${state.query ? 'No matching stories' : 'No stories in this filter'}</div>`;
   for (const b of $('stories').querySelectorAll('.story')) {
-    b.onclick = () => { if (!leaveOk()) return; state.writing = false; state.edits = {}; setMode('read'); state.id = b.dataset.id; state.version = null; refresh(true); };
+    b.onclick = () => { if (!leaveOk()) return; state.writing = false; state.edits = {}; setMode(state.view); state.id = b.dataset.id; state.version = null; refresh(true); };
   }
 }
 
@@ -169,7 +169,9 @@ async function load() {
   renderApproval(d);
 
   $('cues').classList.toggle('hide-src', !state.showSources);
-  $('cues').innerHTML = sc.cues.map((c, i) => {
+  $('cues').classList.toggle('as-broadcast', state.view === 'broadcast' && !state.writing);
+  if (state.view === 'broadcast' && !state.writing) $('cues').innerHTML = asBroadcast(d);
+  else $('cues').innerHTML = sc.cues.map((c, i) => {
     const chg = d.diff[i];
     const badge = d.prevVersion && chg !== 'same' ? `<span class="chg ${chg}">${chg === 'new' ? 'new' : 'changed'}</span>` : '';
     const flagBadge = c.flags && c.flags.length ? `<span class="chg cliche" title="AI cliché: ${esc(c.flags.join(', '))}">cliché: ${esc(c.flags.join(', '))}</span>` : '';
@@ -204,6 +206,35 @@ async function load() {
       : items.map((l) => /^\s*[-*]\s/.test(l) ? `<p>• ${inline(l.replace(/^\s*[-*]\s+/, ''))}</p>` : `<p>${inline(l)}</p>`).join('');
     return `<h3>${esc(n.heading)}</h3>${body}`;
   }).join('');
+}
+
+// As-broadcast: the two-column TV script. Left = what is seen, right = what is heard, with running time code.
+function asBroadcast(d) {
+  const sc = d.script; const h = sc.header || {};
+  const field = (c, k) => c.fields.filter((f) => f.key === k).map((f) => f.value);
+  const head = [['Program', h.program || 'NouGen News'], ['Slug', h.slug || d.story.id.replace(/^\d{4}-\d{2}-\d{2}_/, '').toUpperCase()],
+    ['Talent', h.talent || 'Nou'], ['Version', `v${d.version}`], ['TRT', sc.trt]]
+    .map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
+  const rows = sc.cues.map((c) => {
+    const video = field(c, 'VIDEO'); const supers = field(c, 'SUPER'); const gfx = field(c, 'GFX');
+    const seen = [
+      ...(video.length ? video.map((v) => `<div>${inline(v)}</div>`) : [`<div class="${c.onCamera ? '' : 'tbd'}">${c.onCamera ? `${esc(field(c, 'TALENT')[0] || h.talent || 'Nou')} on camera` : 'Pictures to come'}</div>`]),
+      ...gfx.map((v) => `<div><em>GFX</em> ${inline(v)}</div>`),
+      ...supers.map((v) => `<div class="super"><em>SUPER</em> ${esc(v).split(' | ').join('<br>')}</div>`),
+    ].join('');
+    const heard = [
+      ...['MUSIC', 'SFX', 'NAT'].flatMap((k) => field(c, k).map((v) => `<div class="dir">(${k} ${esc(v)})</div>`)),
+      c.text ? `<div class="copy">${esc(c.text)}</div>` : '',
+      ...field(c, 'SOT').map((v) => `<div class="sot"><em>SOT</em> ${esc(v)}</div>`),
+      c.source ? `<div class="cue-src">${inline(c.source)}</div>` : '',
+    ].join('');
+    return `<tr class="${c.onCamera ? 'cam' : 'vo'}"><td class="tc">${c.tcIn}<small>${c.seconds}s</small></td>
+      <td class="seg-cell"><b>${c.n}</b> ${c.onCamera ? 'ON CAM' : esc(c.kind)}${c.hint ? `<small>${esc(c.hint)}</small>` : ''}</td>
+      <td class="seen">${seen}</td><td class="heard">${heard}</td></tr>`;
+  }).join('');
+  return `<div class="ab-head">${head}</div>
+    <table class="ab"><thead><tr><th>Time code</th><th>Segment</th><th>Video</th><th>Audio</th></tr></thead>
+    <tbody>${rows}</tbody><tfoot><tr><td class="tc">${sc.trt}</td><td colspan="3">End · total running time ${sc.trt}</td></tr></tfoot></table>`;
 }
 
 // Cue text with its edits since the previous version: cut words struck through, new words marked.
@@ -262,8 +293,8 @@ function openPrompter() {
   setMode('prompt');
   updateSpeed();
 }
-function closePrompter() { stopScroll(); $('prompter').hidden = true; setMode(state.writing ? 'write' : 'read'); }
-function setMode(m) { for (const k of ['read', 'write', 'prompt']) $(`mode-${k}`).classList.toggle('on', m === k); }
+function closePrompter() { stopScroll(); $('prompter').hidden = true; setMode(state.writing ? 'write' : state.view); }
+function setMode(m) { for (const k of ['read', 'write', 'broadcast', 'prompt']) $(`mode-${k}`).classList.toggle('on', m === k); }
 function updateSpeed() { $('p-speed').textContent = `${state.speed} px/s${state.scrolling ? ' · playing' : ''}`; }
 function startScroll() {
   let last = performance.now(); const box = $('p-scroll'); let acc = 0;
@@ -280,7 +311,8 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowDown') { state.speed = Math.max(5, state.speed - 5); updateSpeed(); }
 });
 
-$('mode-read').onclick = () => { if (!$('prompter').hidden) closePrompter(); if (state.writing && leaveOk()) setWriting(false); };
+$('mode-read').onclick = () => { if (!$('prompter').hidden) closePrompter(); state.view = 'read'; if (state.writing) { if (leaveOk()) setWriting(false); } else { setMode('read'); load(); } };
+$('mode-broadcast').onclick = () => { if (!$('prompter').hidden) closePrompter(); if (state.writing && !leaveOk()) return; state.view = 'broadcast'; state.writing = false; state.edits = {}; setMode('broadcast'); load(); };
 $('mode-write').onclick = () => { if (!$('prompter').hidden) closePrompter(); if (state.data && !state.writing) setWriting(true); };
 $('mode-prompt').onclick = () => { if (state.data && leaveOk()) { state.writing = false; state.edits = {}; load(); openPrompter(); } };
 $('write-save').onclick = saveWriting;
@@ -379,4 +411,5 @@ refresh(false).then(() => {
   const m = new URLSearchParams(location.search).get('mode');
   if (m === 'prompt') openPrompter();
   if (m === 'write') setWriting(true);
+  if (m === 'broadcast') $('mode-broadcast').click();
 });

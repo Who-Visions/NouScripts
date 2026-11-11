@@ -72,3 +72,21 @@ repository is connected to GitHub and the workflow is run there.
 
 Local build: `cd android && ./gradlew assembleDebug`. The APK is written to
 `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+## Broadcast script template
+
+`templates/broadcast_script_template.md` is the universal format, reverse-engineered from as-broadcast scripts
+(time code + speaker + dialogue tables) and two-column TV news scripts (video left, audio right).
+Copy it into a story folder as `script_v1.md`. What it carries:
+
+| Invariant | In the file |
+|---|---|
+| Header block | `Program:` `Slug:` `Talent:` `Format:` `Writer:` `Air:` above the first cue |
+| Ordered cues, segment type | `**N. KIND (hint, ~S s)**`: ON CAM, VO, SOT, VO/SOT, PKG, READER, NAT, MUSIC, SFX, GFX |
+| What is seen | `VIDEO:` shot or B-roll · `SUPER:` lower third (`Line one \| Line two`) · `GFX:` graphic |
+| What is heard | the plain paragraph is spoken copy · `SOT: IN "…" OUT "…" RUNS m:ss` · `MUSIC:` `SFX:` `NAT:` |
+| Who speaks | `TALENT:` per cue, else the header |
+| Time | each cue's time code and the total running time are computed (words at 2.8/s + SOT runs) |
+| Verification | the `*italic*` line under a cue is its source note |
+
+**As Broadcast** in the app shows any script in this two-column form with running time code.
