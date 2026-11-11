@@ -11,6 +11,12 @@ contextBridge.exposeInMainWorld('nou', {
   approve: (id, version, note) => ipcRenderer.invoke('script:approve', { id, version, note }),
   save: (id, version, edits) => ipcRenderer.invoke('script:save', { id, version, edits }),
   attach: () => ipcRenderer.invoke('ask:attach'),
+  updater: {
+    status: () => ipcRenderer.invoke('updater:status'),
+    check: () => ipcRenderer.invoke('updater:check'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    onStatus: (fn) => { ipcRenderer.on('updater:status', (_e, s) => fn(s)); },
+  },
   ask: (req) => ipcRenderer.invoke('ask:send', req),
   fetchPages: (req) => ipcRenderer.invoke('lane:fetch', req),
   digest: (req) => ipcRenderer.invoke('lane:digest', req),

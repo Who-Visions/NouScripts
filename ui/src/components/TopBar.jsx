@@ -1,7 +1,8 @@
 // Top band. Row 1: hamburger menu, brand, title with a version dropdown, the four view modes, and a View menu.
 // Row 2: telemetry. Secondary actions live in menus so the bar stays clean.
 import { useMemo, useState } from 'react';
-import { Check, ChevronDown, Eye, FileDown, FolderOpen, FileText, Keyboard, Menu, PanelLeft, Library } from 'lucide-react';
+import { useEffect } from 'react';
+import { Check, ChevronDown, Eye, FileDown, FolderOpen, FileText, Keyboard, Menu, PanelLeft, Library, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fmtTime, countWords, lint } from '@/lib/text';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,11 @@ export default function TopBar({ nou }) {
   const d = nou.data;
   const sc = d && d.script;
   const [note, setNote] = useState('');
+  const [upd, setUpd] = useState({ state: 'disabled', text: '' });
+  useEffect(() => {
+    window.nou.updater.status().then(setUpd);
+    window.nou.updater.onStatus(setUpd);
+  }, []);
   const flash = (t) => { setNote(t); setTimeout(() => setNote(''), 3000); };
 
   const stats = useMemo(() => {
@@ -83,6 +89,12 @@ export default function TopBar({ nou }) {
               <DropdownMenuItem disabled={!d} onSelect={() => window.nou.open(d.path)}><FileText className="size-4" />Open script file</DropdownMenuItem>
               <DropdownMenuItem disabled={!d} onSelect={() => window.nou.reveal(d.path)}><FolderOpen className="size-4" />Show in Finder</DropdownMenuItem>
               <DropdownMenuItem disabled={!d} onSelect={exportClap}><FileDown className="size-4" />Export .clap</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => window.nou.updater.check()} disabled={upd.state === 'disabled' || upd.state === 'checking' || upd.state === 'downloading'}>
+                <RefreshCw className="size-4" />Check for updates
+              </DropdownMenuItem>
+              {upd.state === 'ready' && (
+                <DropdownMenuItem onSelect={async () => { const r = await window.nou.updater.install(); if (!r.ok) flash(r.reason); }}>Restart to install the update</DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => nou.setRailCollapsed(!nou.railCollapsed)}>
                 <PanelLeft className="size-4" />{nou.railCollapsed ? 'Show side panel' : 'Hide side panel'}
@@ -101,7 +113,9 @@ export default function TopBar({ nou }) {
           <span className="size-2 rounded-[2px] bg-gold" />
           <span className="font-semibold">Nou Scripts</span>
         </div>
-        {note && <div className="mt-1 truncate pl-1 text-[11px] text-gold">{note}</div>}
+        {(note || ['checking', 'available', 'downloading', 'ready', 'error'].includes(upd.state)) && (
+          <div className="mt-1 truncate pl-1 text-[11px] text-gold" title={note || upd.text}>{note || upd.text}</div>
+        )}
       </div>
 
       <div className={cn('flex min-w-0 flex-col justify-center gap-1.5', GUTTER)}>

@@ -1,6 +1,8 @@
 'use strict';
 const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain } = require('electron');
 const { AsyncLocalStorage } = require('async_hooks');
+const { autoUpdater } = require('electron');
+const { createUpdater } = require('./updater');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
@@ -138,8 +140,10 @@ const step = (text) => { const j = jobs.getStore(); if (j) j.post({ type: 'step'
 const jobSignal = () => { const j = jobs.getStore(); return j ? j.signal : null; };
 const sig = (ms) => { const j = jobSignal(); return j ? AbortSignal.any([AbortSignal.timeout(ms), j]) : AbortSignal.timeout(ms); };
 const checkCancel = () => { const j = jobSignal(); if (j && j.aborted) throw new Error('Cancelled.'); };
+let activeJobs = 0; // jobs streaming right now; an update never restarts the app under one
 function withJob(event, jobId, fn) {
   if (!jobId) return fn();
+  activeJobs++;
   const { port1, port2 } = new MessageChannelMain();
   const ac = new AbortController(); const t0 = Date.now();
   const post = (msg) => { try { port1.postMessage({ ...msg, t: Math.round((Date.now() - t0) / 100) / 10 }); } catch { /* window gone */ } };
@@ -149,7 +153,7 @@ function withJob(event, jobId, fn) {
   return jobs.run({ signal: ac.signal, post }, async () => {
     try { const r = await fn(); post({ type: 'done' }); return r; }
     catch (err) { const msg = ac.signal.aborted ? 'Cancelled.' : err.message; post({ type: 'error', text: msg }); throw new Error(msg); }
-    finally { setTimeout(() => port1.close(), 200); }
+    finally { activeJobs--; setTimeout(() => port1.close(), 200); }
   });
 }
 
@@ -470,5 +474,16 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(() => { createWindow(); watchStories(); });
+// Auto-updates: inert unless the app is packaged and NOU_UPDATE_URL is set (see src/updater.js).
+const updater = createUpdater({
+  autoUpdater, isPackaged: app.isPackaged, feedUrl: process.env.NOU_UPDATE_URL || '',
+  version: app.getVersion(), platform: process.platform, arch: process.arch,
+  send: (s) => win && !win.isDestroyed() && win.webContents.send('updater:status', s),
+  isBusy: () => activeJobs > 0,
+});
+ipcMain.handle('updater:status', () => updater.status());
+ipcMain.handle('updater:check', () => updater.check());
+ipcMain.handle('updater:install', () => updater.install());
+
+app.whenReady().then(() => { createWindow(); watchStories(); updater.start(); });
 app.on('window-all-closed', () => { if (watcher) watcher.close(); app.quit(); });
