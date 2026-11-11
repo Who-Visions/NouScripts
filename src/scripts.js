@@ -434,7 +434,63 @@ function parseAskReply(text, cueNumbers) {
   return { edits, note: typeof obj.note === 'string' ? obj.note.trim() : '' };
 }
 
+// ── Research lanes ──────────────────────────────────────────────────────────
+function extractUrls(text) {
+  return [...new Set((String(text).match(/https?:\/\/[^\s<>"')\]]+/g) || []).map((u) => u.replace(/[.,;:!?]+$/, '')))];
+}
+
+// A stable, readable file name for a fetched page: web_<host>_<path-slug>.txt
+function sourceFileName(url, prefix = 'web') {
+  let u; try { u = new URL(url); } catch { return `${prefix}_page.txt`; }
+  const host = u.hostname.replace(/^www\./, '').replace(/[^a-z0-9]+/gi, '-');
+  const slug = (u.pathname + u.search).replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'home';
+  return `${prefix}_${host}_${slug}.txt`.toLowerCase();
+}
+
+function researchPlanMessages(question, title) {
+  return [
+    { role: 'system', content: 'You plan web searches for a news fact-checker. Answer with ONLY a JSON array of 3 or 4 short, different search queries (strings) that together cover the question: the primary source, independent coverage, and the strongest counter-evidence or criticism.' },
+    { role: 'user', content: `Story: ${title}\nQuestion: ${String(question).trim()}` },
+  ];
+}
+
+function parsePlan(text, question) {
+  const body = String(text || '').replace(/<think>[\s\S]*?<\/think>/gi, '');
+  const a = body.indexOf('['); const b = body.lastIndexOf(']');
+  let qs = [];
+  if (a >= 0 && b > a) { try { qs = JSON.parse(body.slice(a, b + 1)); } catch { qs = []; } }
+  qs = (Array.isArray(qs) ? qs : []).filter((q) => typeof q === 'string' && q.trim()).map((q) => q.trim()).slice(0, 4);
+  return qs.length ? qs : [String(question).trim()];
+}
+
+function researchBriefMessages(question, sources, cues = []) {
+  const src = sources.map((s, i) => `[${i + 1}] ${s.title || s.url}\n${s.url}${s.published ? `\nPublished: ${s.published}` : ''}\n${s.text}`).join('\n\n');
+  const script = cues.map((c) => `[${c.n}] ${c.text}`).join('\n');
+  return [
+    { role: 'system', content: [
+      'You are the research desk for NouGen News. Write a short research brief in Markdown from the numbered sources only.',
+      'Every factual sentence ends with its source number(s) like [2]. If sources disagree, say so. If the question is not answered by the sources, say that plainly. Never use outside knowledge.',
+      'Sections: "## Answer" (3 to 6 sentences), "## Usable lines" (bullets: a fact Nou could say aloud, with source number), "## Check against the script" (bullets: any script line the sources support, contradict or update, by cue number; write "Nothing to flag." if none), "## Sources" (numbered list: title and URL).',
+    ].join('\n') },
+    { role: 'user', content: `QUESTION:\n${String(question).trim()}\n\nCURRENT SCRIPT:\n${script || '(none)'}\n\nSOURCES:\n${src}` },
+  ];
+}
+
+function digestMessages(item, cues = []) {
+  const script = cues.map((c) => `[${c.n}] ${c.text}`).join('\n');
+  return [
+    { role: 'system', content: [
+      'You are the digest desk for NouGen News. Digest ONE item (a web page, PDF, video or audio transcript) for a reporter. Use only the item text; no outside knowledge.',
+      'If the text has [hh:mm:ss] timestamps, cite them for each point. Machine transcripts mishear names: flag any name that looks misheard instead of repeating it as fact.',
+      'Markdown sections: "## What it is" (one or two sentences: who, what, when), "## Key points" (5 to 8 bullets), "## Usable lines" (bullets: facts Nou could say aloud, each with its timestamp or section), "## Check against the script" (bullets by cue number: supports, contradicts or updates; "Nothing to flag." if none).',
+    ].join('\n') },
+    { role: 'user', content: `ITEM: ${item.title}\n${item.url}\nKind: ${item.kind} (${item.lane})\n\nCURRENT SCRIPT:\n${script || '(none)'}\n\nTEXT:\n${String(item.text).slice(0, 60000)}` },
+  ];
+}
+
 module.exports = {
+  digestMessages,
+  extractUrls, sourceFileName, researchPlanMessages, parsePlan, researchBriefMessages,
   ASK_RULES, buildAskMessages, parseAskReply,
   applyCueEdits, saveVersion,
   WORDS_PER_SECOND, storiesRoot, listStories, parseScript, compare, wordDiff, cueChanges, writeApproval,

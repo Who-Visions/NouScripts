@@ -369,7 +369,58 @@ $('toggle-sources').onclick = (e) => {
 };
 
 // ── Bottom dock: the producer line into Nou's ear ─────────────────────────
-const ask = { files: [], busy: false };
+const ask = { files: [], busy: false, lane: 'edit' };
+const LANES = {
+  edit: { ph: 'Tell Nou what to change… e.g. tighten line 5', note: 'Suggestions open in Write. Nothing saves until you do.' },
+  fetch: { ph: 'Paste links: pages, PDFs, YouTube, audio, video', note: 'Each link is read the right way for what it is, saved to sources/ and attached.' },
+  research: { ph: 'Ask a research question…', note: 'Plans searches, reads Exa (Tavily backup), writes a cited brief into the story.' },
+};
+function setLane(l) {
+  ask.lane = l;
+  for (const b of document.querySelectorAll('.lane-seg button')) b.classList.toggle('on', b.dataset.lane === l);
+  $('ask-text').placeholder = LANES[l].ph; $('ask-lane').textContent = LANES[l].note;
+}
+for (const b of document.querySelectorAll('.lane-seg button')) b.onclick = () => setLane(b.dataset.lane);
+function addChips(list) { for (const c of list) if (c && !ask.files.some((f) => f.id === c.id)) ask.files.push(c); renderChips(); }
+function replyOpen(file) {
+  if (!file) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'reply-open'; b.textContent = 'Open';
+  b.onclick = () => window.nou.open(file); $('ask-reply').append(' ', b);
+}
+const scriptCues = () => state.data.script.cues.map((c) => ({ n: c.n, kind: c.kind, hint: c.hint, onCamera: c.onCamera, source: c.source, text: state.edits[c.n] ?? c.text }));
+const cleanErr = (err) => String(err.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+async function runLane(lane, text) {
+  const model = $('ask-model').value; const modelName = $('ask-model').selectedOptions[0].textContent;
+  ask.busy = true; $('ask-send').disabled = true; $('ask-digest').disabled = true;
+  try {
+    if (lane === 'digest') {
+      setReply(`Working out what each link is, then reading and digesting with ${modelName}… (audio and video are transcribed locally and can take minutes)`, 'busy');
+      const r = await window.nou.digest({ id: state.id, version: state.version, text, cues: scriptCues(), model });
+      for (const d of r.done) addChips(d.chips);
+      setReply(`${r.done.length ? r.done.map((d) => `Digested ${d.kind} via ${d.lane}: ${d.what || d.title}`).join(' · ') + ' Saved in the story and attached.' : 'Nothing digested.'}${r.failed.length ? ` Couldn't read: ${r.failed.join('; ')}` : ''} (${r.seconds}s)`, r.done.length ? '' : 'err');
+      if (r.done.length) replyOpen(r.done[r.done.length - 1].file);
+    } else if (lane === 'fetch') {
+      setReply('Reading links…', 'busy');
+      const r = await window.nou.fetchPages({ id: state.id, text });
+      addChips(r.kept);
+      setReply(`${r.kept.length ? `Saved and attached: ${r.kept.map((k) => `${k.name} (${k.kind}, ${Math.round(k.chars / 1000)}k chars)`).join(', ')}.` : 'Nothing saved.'}${r.failed.length ? ` Couldn't read: ${r.failed.join('; ')}` : ''}`, r.kept.length ? '' : 'err');
+    } else if (lane === 'research') {
+      setReply(`Researching with ${modelName}: planning searches…`, 'busy');
+      const r = await window.nou.research({ id: state.id, version: state.version, question: text, cues: scriptCues(), model });
+      addChips([r.brief]);
+      setReply(`${r.answer} (${r.sources} sources via ${r.lanes.join(' + ')}, ${r.seconds}s. Brief saved and attached.)`);
+      replyOpen(r.file);
+    }
+    $('ask-text').value = ''; growAsk();
+  } catch (err) { setReply(`Didn't work: ${cleanErr(err)}`, 'err'); }
+  finally { ask.busy = false; $('ask-send').disabled = false; $('ask-digest').disabled = false; }
+}
+$('ask-digest').onclick = () => {
+  const text = $('ask-text').value.trim();
+  if (ask.busy || !state.data) return;
+  if (!/https?:\/\//.test(text)) { setReply('Paste a link in the box first: a page, PDF, YouTube, audio or video.', 'err'); $('ask-text').focus(); return; }
+  runLane('digest', text);
+};
 function renderChips() {
   $('ask-chips').innerHTML = ask.files.map((f, i) =>
     `<span class="chip" title="${esc(f.name)}${f.text ? '' : ' (name only: not a text file)'}"><span>${esc(f.name)}</span><button type="button" data-i="${i}" aria-label="Remove ${esc(f.name)}">×</button></span>`).join('');
@@ -384,8 +435,10 @@ $('ask-form').onsubmit = async (e) => {
   e.preventDefault();
   const instruction = $('ask-text').value.trim();
   if (!instruction || ask.busy || !state.data) return;
+  if (ask.lane !== 'edit') return runLane(ask.lane, instruction);
   ask.busy = true; $('ask-send').disabled = true;
   const model = $('ask-model').value;
+  $('ask-digest').disabled = true;
   setReply(`Asking ${$('ask-model').selectedOptions[0].textContent}…`, 'busy');
   // Ask about what is on screen: your unsaved edits if you are writing, else this version.
   const cues = state.data.script.cues.map((c) => ({ n: c.n, kind: c.kind, hint: c.hint, onCamera: c.onCamera, source: c.source, text: state.edits[c.n] ?? c.text }));
@@ -401,7 +454,7 @@ $('ask-form').onsubmit = async (e) => {
     setReply(`${n ? `${n} line${n === 1 ? '' : 's'} suggested: ${Object.keys(r.edits).map((k) => `#${k}`).join(', ')}. Review in Write, then save or discard.` : 'No line changes.'}${r.note ? ` ${r.note}` : ''} (${r.seconds}s)`);
   } catch (err) {
     setReply(`Didn't work: ${String(err.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`, 'err');
-  } finally { ask.busy = false; $('ask-send').disabled = false; }
+  } finally { ask.busy = false; $('ask-send').disabled = false; $('ask-digest').disabled = false; }
 };
 
 setRailCollapsed(state.railCollapsed || new URLSearchParams(location.search).get('rail') === 'collapsed');

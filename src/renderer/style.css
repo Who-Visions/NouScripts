@@ -278,3 +278,10 @@ table.ab { width: 100%; border-collapse: collapse; table-layout: fixed; backgrou
 .ab .sot { margin-top: 6px; color: var(--text); }
 .ab .cue-src { margin-top: 8px; padding-top: 0; border-top: 0; }
 .ab tfoot td { font-size: 12px; color: var(--muted); border-bottom: 0; }
+.lane-seg { display: flex; gap: 2px; padding: 2px; margin-bottom: 6px; background: #0d0d12; border-radius: 8px; }
+.lane-seg button { flex: 1; border: 0; background: transparent; color: var(--faint); border-radius: 6px; padding: 4px 2px; font-size: 11px; white-space: nowrap; }
+.lane-seg button.on { background: var(--panel-2); color: var(--text); }
+.digest { flex: 0 0 auto; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(188, 140, 255, .45); background: var(--accent-soft); color: var(--text); font-size: 12px; font-weight: 600; }
+.digest:hover { border-color: var(--accent); }
+.digest:disabled { opacity: .45; cursor: default; }
+.reply-open { border: 1px solid var(--line); background: var(--panel-2); border-radius: 6px; padding: 0 7px; font-size: 11px; color: var(--text); }
