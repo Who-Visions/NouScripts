@@ -137,3 +137,27 @@ test('a heavy rewrite shows as old line then new line, not confetti', () => {
   const light = S.cueChanges(mk('They are the same model underneath.'), mk("They're the same model underneath."));
   assert.ok(light[0].some((r) => r.t === 'same'));
 });
+
+test('applyCueEdits changes only the spoken words and restamps the title', () => {
+  const md = '# Nou script v2: T (draft, not rendered)\n\nIntro.\n\n**1. ON CAM (open, ~7 s)**\nOld line one.\n\n**2. VO (~14 s)**\nKeep me.\n*Source two.*\n\n## Notes\n- note\n';
+  const out = S.applyCueEdits(md, { 1: 'New\n line   one.' }, 3);
+  assert.match(out, /^# Nou script v3: T \(draft, not rendered\)/);
+  assert.ok(out.includes('**1. ON CAM (open, ~7 s)**\nNew line one.\n'));
+  assert.ok(!out.includes('Old line one.'));
+  assert.ok(out.includes('Keep me.\n*Source two.*'));
+  assert.ok(out.endsWith('## Notes\n- note\n'));
+  const p = S.parseScript(out);
+  assert.strictEqual(p.cues[0].text, 'New line one.');
+  assert.strictEqual(p.cues[1].source, 'Source two.');
+});
+
+test('saveVersion writes the next version and never overwrites', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nou-save-'));
+  fs.writeFileSync(path.join(dir, 'script_v1.md'), '# Nou script v1: T\n\n**1. VO**\nA b c.\n*Src.*\n');
+  fs.writeFileSync(path.join(dir, 'script_v2.md'), '# Nou script v2: T\n\n**1. VO**\nA b c d.\n*Src.*\n');
+  const r = S.saveVersion(dir, 1, { 1: 'Edited from one.' });
+  assert.strictEqual(r.version, 3);
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'script_v2.md'), 'utf8').includes('A b c d.'), true);
+  assert.strictEqual(S.parseScript(fs.readFileSync(r.path, 'utf8')).cues[0].text, 'Edited from one.');
+  assert.throws(() => S.saveVersion(dir, 3, { 1: '   ' }), /empty/);
+});
