@@ -246,3 +246,14 @@ test('media labels decode HTML entities', () => {
   const m = S.extractMedia('<a href="/m.pdf">Mythos 5.2&#8217;s card &amp; notes</a>', 'https://a.com/');
   assert.strictEqual(m[0].label, 'Mythos 5.2’s card & notes');
 });
+
+test('nou-media URLs resolve only to image files inside a story media folder', () => {
+  const root = '/stories';
+  const u = S.mediaUrl('2026-11-10_fable-5-2', 'media/abc123.jpg');
+  assert.strictEqual(u, 'nou-media://m/2026-11-10_fable-5-2/abc123.jpg');
+  assert.strictEqual(S.resolveMediaUrl(u, root), '/stories/2026-11-10_fable-5-2/media/abc123.jpg');
+  for (const bad of [
+    'nou-media://m/story/..%2F..%2Fetc%2Fpasswd', 'nou-media://m/..%2F..%2Fx/a.jpg', 'nou-media://m/story/a.txt',
+    'nou-media://m/story/sub/a.jpg', 'nou-media://x/story/a.jpg', 'file:///etc/passwd', 'nou-media://m/story/.hidden.jpg', 'not a url',
+  ]) assert.strictEqual(S.resolveMediaUrl(bad, root), null, bad);
+});
