@@ -24,8 +24,9 @@ function WriteBar({ nou }) {
   const next = Math.max(...d.story.versions) + 1;
   const n = Object.keys(nou.dirtyEdits).length;
   const empty = sc.cues.some((c) => !oneLine(nou.edits[c.n] ?? c.text) && !c.sotSeconds);
-  let words = 0; let flagged = 0;
-  for (const c of sc.cues) { const t = nou.edits[c.n] ?? c.text; words += countWords(t); if (lint(t, d.banlist || []).length) flagged++; }
+  // Same clock as the telemetry: the sum of each cue's rounded time plus any SOT run.
+  let words = 0; let flagged = 0; let secs = 0;
+  for (const c of sc.cues) { const t = nou.edits[c.n] ?? c.text; const w = countWords(t); words += w; secs += Math.round(w / wps) + (c.sotSeconds || 0); if (lint(t, d.banlist || []).length) flagged++; }
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const save = async () => {
@@ -40,7 +41,7 @@ function WriteBar({ nou }) {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
   const status = err || (empty ? 'A line is empty. Every cue needs words before you can save.'
-    : n ? `${n} line${n === 1 ? '' : 's'} edited · ${words} words · ~${fmtTime(Math.round(words / wps))}${flagged ? ` · ${flagged} flagged` : ''}. v${d.version} stays as it is.`
+    : n ? `${n} line${n === 1 ? '' : 's'} edited · ${words} words · ~${fmtTime(secs)}${flagged ? ` · ${flagged} flagged` : ''}. v${d.version} stays as it is.`
       : `Editing v${d.version}. Saving makes v${next}; v${d.version} stays as it is.`);
   return (
     <div className="sticky top-0 z-10 mb-4 flex items-center gap-2.5 rounded-lg border border-gold/35 bg-card px-3.5 py-2.5 text-[13px] shadow-[0_6px_18px_rgba(0,0,0,.35)]">

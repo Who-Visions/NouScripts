@@ -103,7 +103,7 @@ function Media({ nou }) {
             <figure key={m.url} className="m-0 min-w-0 overflow-hidden rounded-md bg-card" title={m.label || m.url}>
               <button type="button" onClick={() => act('open', m)} className="relative grid aspect-[16/10] w-full place-items-center overflow-hidden bg-[#0e0e0f]">
                 {face ? <img src={fileUrl(face)} alt={m.label || ''} loading="lazy" className="size-full object-cover" />
-                  : <span className={cn('text-lg text-muted-foreground', m.kind === 'video' && 'text-nou')}>{m.kind === 'pdf' ? 'PDF' : m.kind === 'audio' ? '♪' : '▶'}</span>}
+                  : <span className={cn('text-lg text-muted-foreground', m.kind === 'video' && 'text-nou')}>{m.kind === 'pdf' ? 'PDF' : m.kind === 'audio' ? '♪' : m.kind === 'image' ? '◻' : '▶'}</span>}
                 {poster && <span className="absolute bottom-1.5 left-1.5 grid size-5 place-items-center rounded-full bg-black/65"><Play className="size-2.5 fill-white text-white" /></span>}
               </button>
               <figcaption className="flex min-w-0 flex-col p-1.5">
