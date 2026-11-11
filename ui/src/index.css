@@ -75,6 +75,11 @@
   body { @apply bg-background text-foreground antialiased; font: 14px/1.55 var(--font-sans); }
   ins { text-decoration: none; background: rgba(169, 199, 155, 0.14); border-radius: 3px; padding: 0 3px; box-shadow: inset 0 -1px 0 rgba(74, 222, 128, 0.45); }
   del { color: var(--faint); text-decoration: line-through; text-decoration-color: var(--destructive); text-decoration-thickness: 1.5px; }
+  /* Reduced motion: Electron follows the OS setting (systemPreferences.getAnimationSettings().prefersReducedMotion
+     on macOS). Turn transitions and animations off for it, and make scrolling instant. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+  }
   /* Electron's corner smoothing: continuous corners like macOS (60% on macOS, 0% elsewhere). Experimental; a no-op in browsers. */
   [class*="rounded"] { -electron-corner-smoothing: system-ui; }
   .drag { -webkit-app-region: drag; }
