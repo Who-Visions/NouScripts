@@ -252,6 +252,52 @@ function compare(prev, next) {
 
 function norm(s) { return s.replace(/\s+/g, ' ').trim().toLowerCase(); }
 
+// Word-level changes between two cue texts, as runs: [{ t: 'same' | 'add' | 'del', s: 'words' }].
+// Longest common subsequence over whitespace tokens. Words compare without case or edge punctuation,
+// so "three." -> "three four." reads as one added word, not a rewrite. Same runs show the new wording.
+function wordDiff(a, b) {
+  const x = (a || '').split(/\s+/).filter(Boolean);
+  const y = (b || '').split(/\s+/).filter(Boolean);
+  const key = (w) => w.toLowerCase().replace(/^[^\p{L}\p{N}$]+|[^\p{L}\p{N}%]+$/gu, '') || w;
+  const n = x.length, m = y.length;
+  const L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      L[i][j] = key(x[i]) === key(y[j]) ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    }
+  }
+  const runs = [];
+  const push = (t, w) => {
+    const last = runs[runs.length - 1];
+    if (last && last.t === t) last.s += ' ' + w; else runs.push({ t, s: w });
+  };
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (key(x[i]) === key(y[j])) { push('same', y[j]); i++; j++; }
+    else if (L[i + 1][j] >= L[i][j + 1]) push('del', x[i++]);
+    else push('add', y[j++]);
+  }
+  while (i < n) push('del', x[i++]);
+  while (j < m) push('add', y[j++]);
+  return runs;
+}
+
+// Per cue of `next`: word runs against the same-numbered cue of `prev`, or null when there is nothing to compare.
+function cueChanges(prev, next) {
+  if (!prev) return next.cues.map(() => null);
+  const byN = new Map(prev.cues.map((c) => [c.n, c]));
+  return next.cues.map((c) => {
+    const p = byN.get(c.n);
+    if (!p || norm(p.text) === norm(c.text)) return null;
+    const runs = wordDiff(p.text, c.text);
+    // A rewrite reads better whole than as confetti: if under 40% of the new words survive, show old then new.
+    const kept = runs.filter((r) => r.t === 'same').reduce((a, r) => a + r.s.split(' ').length, 0);
+    const total = c.text.split(/\s+/).filter(Boolean).length;
+    return kept / Math.max(1, total) < REWRITE_KEEP ? [{ t: 'del', s: p.text.trim() }, { t: 'add', s: c.text.trim() }] : runs;
+  });
+}
+const REWRITE_KEEP = 0.4;
+
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
@@ -292,7 +338,7 @@ function easternTime(d) {
 }
 
 module.exports = {
-  WORDS_PER_SECOND, storiesRoot, listStories, parseScript, compare, writeApproval,
+  WORDS_PER_SECOND, storiesRoot, listStories, parseScript, compare, wordDiff, cueChanges, writeApproval,
   readApproval, approvalIsCurrent, easternTime, countWords, DEFAULT_BANLIST,
   loadBanlist, lintCue, toOpenClap, exportOpenClap,
 };
