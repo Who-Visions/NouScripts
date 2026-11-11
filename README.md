@@ -148,3 +148,10 @@ Before updates can install for real, two things must exist and neither is in thi
 
 An update is never installed on its own. When one is downloaded the top bar offers "Restart to install the update", and
 that refuses while a job is running (`isBusy` counts the MessagePort jobs). Tests: `node --test test/updater.test.js`.
+
+## Job notifications
+
+When Web fetch, Digest, Research or Edit finishes or fails while the Nou Scripts window is not in front, a local
+notification says so (Electron `Notification`, shown only when the window is not focused). Cancelled jobs stay quiet.
+This is local only. Electron's push-notification API (APNS) would need a signed macOS app with the push entitlement,
+an Apple developer account and a server sending pushes; none of that is needed or present.

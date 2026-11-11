@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain, Notification } = require('electron');
 const { AsyncLocalStorage } = require('async_hooks');
 const { autoUpdater } = require('electron');
 const { createUpdater } = require('./updater');
@@ -141,7 +141,21 @@ const jobSignal = () => { const j = jobs.getStore(); return j ? j.signal : null;
 const sig = (ms) => { const j = jobSignal(); return j ? AbortSignal.any([AbortSignal.timeout(ms), j]) : AbortSignal.timeout(ms); };
 const checkCancel = () => { const j = jobSignal(); if (j && j.aborted) throw new Error('Cancelled.'); };
 let activeJobs = 0; // jobs streaming right now; an update never restarts the app under one
-function withJob(event, jobId, fn) {
+// A local notification when a long job ends while the window is not in front. Local only: no push service, no
+// Apple account, nothing leaves the machine. Skipped when the window has focus, since the result is already on screen.
+function notifyJob(label, ok, detail = '') {
+  if (!Notification.isSupported()) return;
+  if (win && !win.isDestroyed() && win.isFocused()) return;
+  const n = new Notification({
+    title: ok ? `${label} finished` : `${label} failed`,
+    body: ok ? 'Open Nou Scripts to see the result.' : String(detail).slice(0, 200),
+    silent: true,
+  });
+  n.on('click', () => { if (win && !win.isDestroyed()) { win.show(); win.focus(); } });
+  n.show();
+}
+
+function withJob(event, jobId, label, fn) {
   if (!jobId) return fn();
   activeJobs++;
   const { port1, port2 } = new MessageChannelMain();
@@ -151,8 +165,13 @@ function withJob(event, jobId, fn) {
   port1.start();
   event.sender.postMessage('nou-job-port', { jobId }, [port2]);
   return jobs.run({ signal: ac.signal, post }, async () => {
-    try { const r = await fn(); post({ type: 'done' }); return r; }
-    catch (err) { const msg = ac.signal.aborted ? 'Cancelled.' : err.message; post({ type: 'error', text: msg }); throw new Error(msg); }
+    try { const r = await fn(); post({ type: 'done' }); notifyJob(label, true); return r; }
+    catch (err) {
+      const msg = ac.signal.aborted ? 'Cancelled.' : err.message;
+      post({ type: 'error', text: msg });
+      if (msg !== 'Cancelled.') notifyJob(label, false, msg);
+      throw new Error(msg);
+    }
     finally { activeJobs--; setTimeout(() => port1.close(), 200); }
   });
 }
@@ -328,7 +347,7 @@ function keepSource(story, page, prefix) {
   return { id, name: path.basename(file), text: true };
 }
 
-ipcMain.handle('lane:fetch', (_e, __req) => withJob(_e, __req && __req.jobId, async () => {
+ipcMain.handle('lane:fetch', (_e, __req) => withJob(_e, __req && __req.jobId, 'Web fetch', async () => {
   const { id, text } = __req;
   const story = storyById(id);
   if (!story) throw new Error('story not found');
@@ -349,7 +368,7 @@ ipcMain.handle('lane:fetch', (_e, __req) => withJob(_e, __req && __req.jobId, as
 }));
 
 // Digest: resolve each link, keep its text in sources/, and write a cited digest next to the script.
-ipcMain.handle('lane:digest', (_e, __req) => withJob(_e, __req && __req.jobId, async () => {
+ipcMain.handle('lane:digest', (_e, __req) => withJob(_e, __req && __req.jobId, 'Digest', async () => {
   const { id, version, text, cues, model } = __req;
   const story = storyById(id);
   if (!story) throw new Error('story not found');
@@ -378,7 +397,7 @@ ipcMain.handle('lane:digest', (_e, __req) => withJob(_e, __req && __req.jobId, a
   return { done, failed, seconds: Math.round((Date.now() - t0) / 100) / 10 };
 }));
 
-ipcMain.handle('lane:research', (_e, __req) => withJob(_e, __req && __req.jobId, async () => {
+ipcMain.handle('lane:research', (_e, __req) => withJob(_e, __req && __req.jobId, 'Research', async () => {
   const { id, version, question, cues, model } = __req;
   const story = storyById(id);
   if (!story) throw new Error('story not found');
@@ -407,7 +426,7 @@ ipcMain.handle('lane:research', (_e, __req) => withJob(_e, __req && __req.jobId,
   return { file, brief: { id: briefId, name: path.basename(file), text: true }, answer: answer.trim(), queries, sources: top.length, lanes: [...new Set(found.map((f) => f.lane))], seconds: Math.round((Date.now() - t0) / 100) / 10 };
 }));
 
-ipcMain.handle('ask:send', (_e, __req) => withJob(_e, __req && __req.jobId, async () => {
+ipcMain.handle('ask:send', (_e, __req) => withJob(_e, __req && __req.jobId, 'Edit', async () => {
   const { id, version, cues, instruction, attachmentIds = [], model } = __req;
   const story = storyById(id);
   if (!story) throw new Error('story not found');
