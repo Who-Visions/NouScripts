@@ -241,3 +241,8 @@ test('media: photos, videos, embeds and audio are pulled from a page, noise drop
   assert.strictEqual(merged.length, m.length);
   assert.strictEqual(merged[merged.length - 1].url, 'https://news.example.com/v/clip.mp4');
 });
+
+test('media labels decode HTML entities', () => {
+  const m = S.extractMedia('<a href="/m.pdf">Mythos 5.2&#8217;s card &amp; notes</a>', 'https://a.com/');
+  assert.strictEqual(m[0].label, 'Mythos 5.2’s card & notes');
+});
