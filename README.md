@@ -155,3 +155,9 @@ When Web fetch, Digest, Research or Edit finishes or fails while the Nou Scripts
 notification says so (Electron `Notification`, shown only when the window is not focused). Cancelled jobs stay quiet.
 This is local only. Electron's push-notification API (APNS) would need a signed macOS app with the push entitlement,
 an Apple developer account and a server sending pushes; none of that is needed or present.
+
+## Corner smoothing
+
+Every element with a rounded class gets Electron's `-electron-corner-smoothing: system-ui` (see `ui/src/index.css`):
+continuous corners like macOS (60% on macOS, 0% elsewhere). It is experimental and a no-op in browsers. At the app's
+10 px and 6 px radii the effect is subtle; it shows most on larger shapes.
