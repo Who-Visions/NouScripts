@@ -1,5 +1,10 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain, Notification, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain, Notification, screen, protocol, net } = require('electron');
+const { pathToFileURL } = require('url');
+
+// Thumbnails load over nou-media:// (security checklist item 18: no file:// in the page). Must be registered
+// before the app is ready.
+protocol.registerSchemesAsPrivileged([{ scheme: 'nou-media', privileges: { standard: true, secure: true, supportFetchAPI: false } }]);
 const { windowSize, refit } = require('./window-size');
 const { AsyncLocalStorage } = require('async_hooks');
 const { autoUpdater } = require('electron');
@@ -325,7 +330,8 @@ ipcMain.handle('story:files', (_e, { id }) => {
 ipcMain.handle('media:list', (_e, { id }) => {
   const story = storyById(id);
   if (!story) return [];
-  return readMedia(story).map((m) => ({ ...m, path: m.file ? path.join(story.dir, m.file) : null }));
+  // src is what the page shows; path stays for attach/open decisions. Labels saved before entity decoding are cleaned here.
+  return readMedia(story).map((m) => ({ ...m, label: S.decodeEntities(m.label || ''), path: m.file ? path.join(story.dir, m.file) : null, src: m.file ? S.mediaUrl(story.id, m.file) : null }));
 });
 ipcMain.handle('media:attach', (e, { id, url }) => {
   if (!fromAppPage(e)) return denied();
@@ -525,6 +531,12 @@ function refitToDisplay() {
 }
 // The screen module is only usable after 'ready'; attach the display listeners there.
 app.whenReady().then(() => {
+  // Serve only downloaded photos from a story's media folder; anything else is a 404.
+  protocol.handle('nou-media', (req) => {
+    const file = S.resolveMediaUrl(req.url);
+    if (!file || !fs.existsSync(file)) return new Response('Not found', { status: 404 });
+    return net.fetch(pathToFileURL(file).toString());
+  });
   createWindow(); watchStories(); updater.start();
   screen.on('display-metrics-changed', refitToDisplay);
   screen.on('display-removed', refitToDisplay);

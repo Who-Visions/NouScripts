@@ -554,7 +554,26 @@ function mergeMedia(existing, items, source, now = new Date()) {
   return [...fresh, ...list];
 }
 
+// nou-media://m/<storyId>/<file> -> the absolute path of a downloaded photo, or null. Only a plain file name
+// inside <root>/<storyId>/media/ resolves: no slashes, no "..", image extensions only.
+function mediaUrl(storyId, file) {
+  return `nou-media://m/${encodeURIComponent(storyId)}/${encodeURIComponent(path.basename(file))}`;
+}
+function resolveMediaUrl(url, root = storiesRoot()) {
+  let u; try { u = new URL(url); } catch { return null; }
+  if (u.protocol !== 'nou-media:' || u.hostname !== 'm') return null;
+  const parts = u.pathname.split('/').filter(Boolean).map((p) => { try { return decodeURIComponent(p); } catch { return ''; } });
+  if (parts.length !== 2) return null;
+  const [storyId, file] = parts;
+  if (!storyId || !file || /[\\/]/.test(storyId) || /[\\/]/.test(file) || storyId.startsWith('.') || file.startsWith('.')) return null;
+  if (!/\.(jpe?g|png|webp|gif|avif|img)$/i.test(file)) return null;
+  const dir = path.resolve(root, storyId, 'media');
+  const abs = path.resolve(dir, file);
+  return abs.startsWith(dir + path.sep) ? abs : null;
+}
+
 module.exports = {
+  mediaUrl, resolveMediaUrl, decodeEntities,
   extractMedia, mergeMedia, mediaKind,
   digestMessages,
   extractUrls, sourceFileName, researchPlanMessages, parsePlan, researchBriefMessages,

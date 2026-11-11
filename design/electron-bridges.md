@@ -23,7 +23,7 @@ Each row ties a documented rule or API to the place in this repo that uses it, a
 | 15 | No shell.openExternal with untrusted content | openExternal only for https links, and the OS error is caught | met |
 | 16 | Current Electron | electron 45.2.1 in package.json | met |
 | 17 | Validate IPC sender | file:open, file:reveal, media:open, media:attach, updater:install check the sender is the app's top frame (fromAppPage) | fixed in this branch |
-| 18 | Avoid file:// for local pages | the window loads via loadFile; media thumbnails use file:// URLs in the renderer (SidePanel fileUrl) and the CSP allows file: for images | gap, accepted for now: a custom protocol for thumbnails would remove it |
+| 18 | Avoid file:// for local pages | thumbnails load over the nou-media:// protocol (protocol.handle in src/main.js, resolveMediaUrl in src/scripts.js); the CSP no longer allows file: | met for media. The window itself still loads with loadFile |
 | 19 | Fuses | app is not packaged; fuses apply to packaging | later: set when packaging |
 | 20 | Do not expose Electron APIs | preload exposes wrapped functions only, never raw ipcRenderer | met |
 

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, Play, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { host, eastern, fileUrl, cleanErr } from '@/lib/text';
+import { host, eastern, cleanErr } from '@/lib/text';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -98,11 +98,11 @@ function Media({ nou }) {
       <div className="grid grid-cols-2 gap-2 overflow-auto pb-2">
         {shown.map((m) => {
           const poster = m.kind === 'video' && items.find((x) => x.kind === 'image' && x.path && x.source === m.source && x.via === 'thumbnail');
-          const face = poster ? poster.path : m.kind === 'image' ? m.path : null;
+          const face = poster ? poster.src : m.kind === 'image' ? m.src : null;
           return (
             <figure key={m.url} className="m-0 min-w-0 overflow-hidden rounded-md bg-card" title={m.label || m.url}>
               <button type="button" onClick={() => act('open', m)} className="relative grid aspect-[16/10] w-full place-items-center overflow-hidden bg-[#0e0e0f]">
-                {face ? <img src={fileUrl(face)} alt={m.label || ''} loading="lazy" className="size-full object-cover" />
+                {face ? <img src={face} alt={m.label || ''} loading="lazy" className="size-full object-cover" />
                   : <span className={cn('text-lg text-muted-foreground', m.kind === 'video' && 'text-nou')}>{m.kind === 'pdf' ? 'PDF' : m.kind === 'audio' ? '♪' : m.kind === 'image' ? '◻' : '▶'}</span>}
                 {poster && <span className="absolute bottom-1.5 left-1.5 grid size-5 place-items-center rounded-full bg-black/65"><Play className="size-2.5 fill-white text-white" /></span>}
               </button>

@@ -30,4 +30,3 @@ export function Inline({ text }) {
 export const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
 export const eastern = (t) => new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(t));
 export const cleanErr = (err) => String((err && err.message) || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
-export const fileUrl = (p) => 'file://' + p.split('/').map(encodeURIComponent).join('/');
