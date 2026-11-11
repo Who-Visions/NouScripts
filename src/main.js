@@ -1,5 +1,6 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog, MessageChannelMain, Notification, screen } = require('electron');
+const { windowSize } = require('./window-size');
 const { AsyncLocalStorage } = require('async_hooks');
 const { autoUpdater } = require('electron');
 const { createUpdater } = require('./updater');
@@ -468,7 +469,7 @@ function watchStories() {
 function createWindow() {
   nativeTheme.themeSource = 'dark';
   win = new BrowserWindow({
-    width: 1280, height: 860, minWidth: 900, minHeight: 600,
+    ...windowSize(screen.getPrimaryDisplay().workAreaSize),
     title: 'Nou Scripts', backgroundColor: '#121213', show: !capture,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
