@@ -16,4 +16,14 @@ function windowSize(work) {
   };
 }
 
-module.exports = { windowSize, PREFERRED, MIN };
+// Re-fit an existing window to a changed display: shrink it only if it no longer fits the work area, and never
+// below the minimum. Returns null when it already fits (so the window is left alone).
+function refit(current, work) {
+  const fit = windowSize(work);
+  const width = Math.min(current.width, fit.width);
+  const height = Math.min(current.height, fit.height);
+  if (width === current.width && height === current.height) return null;
+  return { width, height };
+}
+
+module.exports = { windowSize, refit, PREFERRED, MIN };
