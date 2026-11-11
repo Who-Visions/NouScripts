@@ -253,3 +253,28 @@ body.writing .approval { display: none; }
   .app, .rail-collapsed .app { grid-template-columns: 68px minmax(0, 1fr) 260px; }
   .dock { grid-template-columns: 200px minmax(0, 1fr) 220px; }
 }
+
+/* As Broadcast: the two-column TV script with running time code. */
+.cues.as-broadcast { max-width: none; }
+.ab-head { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 10px 14px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.ab-head span { display: block; color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: 1.1px; }
+.ab-head b { font-size: 13px; font-variant-numeric: tabular-nums; }
+table.ab { width: 100%; border-collapse: collapse; table-layout: fixed; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.ab th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 1.1px; color: var(--faint); font-weight: 600; padding: 9px 12px; border-bottom: 1px solid var(--line); background: #18181e; }
+.ab th:nth-child(1) { width: 82px; } .ab th:nth-child(2) { width: 92px; } .ab th:nth-child(3) { width: 27%; }
+.ab td { vertical-align: top; padding: 12px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.ab tr.cam td:first-child { box-shadow: inset 3px 0 0 var(--gold); } .ab tr.vo td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.ab .tc { font: 12px var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+.ab .tc small, .ab .seg-cell small { display: block; color: var(--faint); font-size: 11px; margin-top: 2px; }
+.ab .seg-cell { font-size: 11px; letter-spacing: .6px; color: var(--muted); text-transform: uppercase; }
+.ab .seg-cell b { color: var(--text); margin-right: 4px; }
+.ab .seen { color: var(--muted); border-right: 1px solid var(--line); }
+.ab .seen > div + div { margin-top: 6px; }
+.ab .seen .tbd { color: var(--faint); font-style: italic; }
+.ab em { font-style: normal; font-size: 10px; letter-spacing: .8px; color: var(--gold); margin-right: 4px; }
+.ab .super { color: var(--text); }
+.ab .copy { font: 16px/1.55 var(--read); color: var(--text); }
+.ab .dir { color: var(--faint); font-size: 12px; margin-bottom: 4px; }
+.ab .sot { margin-top: 6px; color: var(--text); }
+.ab .cue-src { margin-top: 8px; padding-top: 0; border-top: 0; }
+.ab tfoot td { font-size: 12px; color: var(--muted); border-bottom: 0; }

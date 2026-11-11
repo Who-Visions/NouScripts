@@ -84,9 +84,16 @@ function titleOf(md) {
 // A cue line looks like: **1. ON CAM (open, ~7 s)**  or  **2. VO (~14 s)**
 const CUE = /^\*\*(\d+)\.\s+([A-Z][A-Z /-]*?)\s*(?:\(([^)]*)\))?\*\*\s*$/;
 
+// Template fields (templates/broadcast_script_template.md). Header fields sit above the first cue;
+// cue fields sit inside a cue. Neither is spoken.
+const HEADER_FIELD = /^(Program|Slug|Talent|Format|Writer|Air)\s*:\s*(.+)$/i;
+const CUE_FIELD = /^>?\s*(VIDEO|SUPER|SOT|MUSIC|SFX|NAT|GFX|TALENT)\s*:\s*(.+)$/i;
+const SOT_RUNS = /RUNS\s+(\d+):(\d{2})/i;
+const timecode = (s) => [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map((n) => String(n).padStart(2, '0')).join(':');
+
 function parseScript(md, terms = DEFAULT_BANLIST) {
-  const lines = md.replace(/\r\n/g, '\n').split('\n');
-  const out = { title: titleOf(md), intro: [], cues: [], notes: [] };
+  const lines = md.replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '').split('\n');
+  const out = { title: titleOf(md), intro: [], header: {}, cues: [], notes: [] };
   let cur = null;
   let inNotes = false;
   let noteSection = null;
@@ -103,13 +110,20 @@ function parseScript(md, terms = DEFAULT_BANLIST) {
     if (inNotes) { noteSection.lines.push(line); continue; }
     const cue = CUE.exec(line.trim());
     if (cue) {
-      cur = { n: Number(cue[1]), kind: cue[2].trim(), hint: (cue[3] || '').trim(), text: [], source: [] };
+      cur = { n: Number(cue[1]), kind: cue[2].trim(), hint: (cue[3] || '').trim(), text: [], source: [], fields: [] };
       out.cues.push(cur);
       continue;
     }
-    if (!cur) { if (line.trim()) out.intro.push(line.trim()); continue; }
+    if (!cur) {
+      const h = HEADER_FIELD.exec(line.trim());
+      if (h) out.header[h[1].toLowerCase()] = h[2].trim();
+      else if (line.trim()) out.intro.push(line.trim());
+      continue;
+    }
     const t = line.trim();
     if (!t) continue;
+    const f = CUE_FIELD.exec(t);
+    if (f) { cur.fields.push({ key: f[1].toUpperCase(), value: f[2].trim() }); continue; }
     const src = /^\*(?!\*)(.+)\*$/.exec(t);
     if (src) cur.source.push(src[1].trim());
     else cur.text.push(t);
@@ -118,13 +132,21 @@ function parseScript(md, terms = DEFAULT_BANLIST) {
     c.text = c.text.join(' ');
     c.source = c.source.join(' ');
     c.words = countWords(c.text);
-    c.seconds = Math.round(c.words / WORDS_PER_SECOND);
+    // Recorded sound (SOT: ... RUNS m:ss) runs on the clock too, on top of anything Nou says.
+    c.sotSeconds = c.fields.filter((f) => f.key === 'SOT').reduce((a, f) => {
+      const m = SOT_RUNS.exec(f.value); return a + (m ? Number(m[1]) * 60 + Number(m[2]) : 0);
+    }, 0);
+    c.seconds = Math.round(c.words / WORDS_PER_SECOND) + c.sotSeconds;
     c.onCamera = /ON\s*CAM/i.test(c.kind);
     c.flags = lintCue(c.text, terms);
   }
+  let clock = 0;
+  for (const c of out.cues) { c.tcIn = timecode(clock); clock += c.seconds; c.tcOut = timecode(clock); }
+  out.trt = timecode(clock);
   out.words = out.cues.reduce((a, c) => a + c.words, 0);
-  out.seconds = Math.round(out.words / WORDS_PER_SECOND);
-  out.onCameraSeconds = out.cues.filter((c) => c.onCamera).reduce((a, c) => a + c.seconds, 0);
+  // One clock: the runtime is the sum of the cue times, so it always equals the as-broadcast TRT.
+  out.seconds = out.cues.reduce((a, c) => a + c.seconds, 0);
+  out.onCameraSeconds = out.cues.filter((c) => c.onCamera).reduce((a, c) => a + c.seconds - c.sotSeconds, 0);
   // OmniAvatar renders about 4.6 s of audio per free job (talkinghead.CHUNK).
   out.avatarJobs = out.cues.filter((c) => c.onCamera).reduce((a, c) => a + Math.max(1, Math.ceil(c.seconds / 4.6)), 0);
   out.flaggedCount = out.cues.filter((c) => c.flags.length > 0).length;
@@ -342,18 +364,25 @@ function easternTime(d) {
 function applyCueEdits(md, edits, version) {
   const out = [];
   let skipping = false;
+  let pending = null;
   for (const raw of md.replace(/\r\n/g, '\n').split('\n')) {
     const t = raw.trim();
     const cue = CUE.exec(t);
     if (cue || /^##\s/.test(t)) skipping = false;
     if (cue && Object.prototype.hasOwnProperty.call(edits, cue[1])) {
-      out.push(raw, oneLine(edits[cue[1]]));
+      out.push(raw);
+      pending = oneLine(edits[cue[1]]);
       skipping = true;
       continue;
     }
-    if (skipping && t && !/^\*(?!\*)(.+)\*$/.test(t)) continue;
+    // The new spoken text goes where the old text started: after any VIDEO/SUPER lines, before the source.
+    if (pending !== null && (!t || !CUE_FIELD.exec(t))) {
+      out.push(pending); pending = null;
+    }
+    if (skipping && t && !/^\*(?!\*)(.+)\*$/.test(t) && !CUE_FIELD.exec(t)) continue;
     out.push(/^#\s/.test(t) && version ? raw.replace(/(Nou script v)\d+/i, `$1${version}`) : raw);
   }
+  if (pending !== null) out.push(pending);
   return out.join('\n');
 }
 const oneLine = (s) => String(s).replace(/\s+/g, ' ').trim();

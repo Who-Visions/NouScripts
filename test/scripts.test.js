@@ -179,3 +179,31 @@ test('producer line: reply parsing keeps only real, non-empty cue edits', () => 
   assert.deepStrictEqual(S.parseAskReply('{"2":"Flat form."}', [1, 2]).edits, { 2: 'Flat form.' });
   assert.throws(() => S.parseAskReply('no json here', [1]), /JSON/);
 });
+
+test('broadcast template: header, VIDEO/SUPER/SOT fields, SOT run time and time codes', () => {
+  const md = fs.readFileSync(path.join(__dirname, '..', 'templates', 'broadcast_script_template.md'), 'utf8');
+  const p = S.parseScript(md);
+  assert.strictEqual(p.header.slug, 'STORY-SLUG');
+  assert.strictEqual(p.header.program, 'NouGen News');
+  assert.strictEqual(p.cues.length, 5);
+  const [open, , sot] = p.cues;
+  assert.deepStrictEqual(open.fields.map((f) => f.key), ['VIDEO', 'SUPER']);
+  assert.ok(!open.text.includes('VIDEO'), 'fields are not spoken');
+  assert.strictEqual(sot.text, '');
+  assert.strictEqual(sot.sotSeconds, 12);
+  assert.strictEqual(sot.seconds, 12);
+  assert.strictEqual(p.cues[0].tcIn, '00:00:00');
+  assert.strictEqual(p.cues[1].tcIn, p.cues[0].tcOut);
+  assert.strictEqual(p.trt, p.cues[4].tcOut);
+  assert.ok(!p.notes.some((n) => n.lines.join(' ').includes('reverse-engineered')), 'the HTML comment is not shown');
+});
+
+test('editing a templated cue keeps its VIDEO/SUPER lines and puts the words before the source', () => {
+  const md = '# Nou script v1: T\n\n**1. VO (~5 s)**\nVIDEO: B-roll.\nSUPER: A | B\nOld words.\n*Src.*\n\n**2. SOT**\nVIDEO: Clip.\nSOT: IN "a" OUT "b" RUNS 0:05\n*Src2.*\n';
+  const out = S.applyCueEdits(md, { 1: 'New words.', 2: 'Lead-in line.' }, 2);
+  assert.ok(out.includes('**1. VO (~5 s)**\nVIDEO: B-roll.\nSUPER: A | B\nNew words.\n*Src.*'));
+  assert.ok(out.includes('SOT: IN "a" OUT "b" RUNS 0:05\nLead-in line.\n*Src2.*'));
+  const p = S.parseScript(out);
+  assert.strictEqual(p.cues[1].fields.length, 2);
+  assert.strictEqual(p.cues[1].text, 'Lead-in line.');
+});
