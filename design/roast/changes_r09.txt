@@ -1,0 +1,3 @@
+- Round 8 fixes applied: cue cards recessed (#101012, white/9% hairline); approval gate on #111113 with a white/8% hairline; the input box recessed with a white/12% hairline and gold focus.
+- Cue header demarcation: two-digit monospace cue number, and a hairline divider before the shot description.
+- Alignment unchanged and exact (dividers 304 / 960, header line 117, edges 342 / 922).

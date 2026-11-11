@@ -23,12 +23,14 @@ export default function IconRail({ nou }) {
       className={cn(
         'flex flex-col items-center border-r bg-rail',
         'w-[56px] h-full shrink-0',
-        'pt-3 gap-1',
+        'gap-1',
         'transition-all duration-200'
       )}
       aria-label="Sections"
       role="navigation"
     >
+      <div className="h-10 w-full flex-none border-b" aria-hidden="true" />
+      <div className="h-1" />
       {panels.map(({ key, label, icon: Icon, count, active }) => (
         <Tooltip key={key} delayDuration={200}>
           <TooltipTrigger asChild>
@@ -36,7 +38,7 @@ export default function IconRail({ nou }) {
               variant="ghost"
               size="icon"
               className={cn(
-                'relative w-[38px] h-[38px] rounded-md',
+                'relative h-[46px] w-[46px] flex-col gap-0.5 rounded-md',
                 'text-muted-foreground',
                 'hover:bg-card hover:text-foreground',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-rail',
@@ -49,7 +51,8 @@ export default function IconRail({ nou }) {
               aria-label={label}
               aria-pressed={active}
             >
-              <Icon className="w-5 h-5" aria-hidden="true" />
+              <Icon className="size-[18px]" aria-hidden="true" />
+              <span className="text-[9px] leading-none font-medium">{label === 'Media sources' ? 'Media' : label}</span>
               {count > 0 && (
                 <span
                   className={cn(

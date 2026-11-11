@@ -1,0 +1,3 @@
+- Round 7 note on the clipped edit time: now a short "Nov 11, 12:21 AM" that never wraps (full date in the tooltip).
+- Since round 5: all three bands share one column grid. Dividers at x=304 and x=960 run unbroken top to bottom; every column header is 40 px so the first line runs straight at y=117; title, rundown, cards and the input box share left edge 342 and right edge 922.
+- Dock is one 63 px row; cue headers show the shot (VIDEO line) and never wrap; Write edits in place.

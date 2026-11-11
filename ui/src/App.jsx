@@ -1,7 +1,7 @@
-// Three bands (Dave's layout): top = menu bar + telemetry; middle = icon rail, panel, script, right rail;
-// bottom = three modules with the producer input in the centre.
+// Three bands on ONE column grid: icon rail · panel · script · right rail. The top bar, the middle and the dock
+// share the same column edges, so every vertical line runs unbroken from top to bottom, and every column's
+// header row is 40 px, so the first horizontal line runs unbroken across the window.
 import { useNou } from '@/lib/useNou';
-import { cn } from '@/lib/utils';
 import TopBar from '@/components/TopBar';
 import IconRail from '@/components/IconRail';
 import SidePanel from '@/components/SidePanel';
@@ -10,15 +10,18 @@ import RightRail from '@/components/RightRail';
 import Dock from '@/components/Dock';
 import Teleprompter from '@/components/Teleprompter';
 
+export const COLS = 'grid-cols-[56px_var(--panel)_minmax(0,1fr)_320px]';
+
 export default function App() {
   const nou = useNou();
   return (
-    <div className="grid h-screen w-screen grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
+    <div className="grid h-screen w-screen grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden"
+      style={{ '--panel': nou.railCollapsed ? '0px' : '248px' }}>
       <TopBar nou={nou} />
-      <div className={cn('grid min-h-0', nou.railCollapsed ? 'grid-cols-[56px_0_minmax(0,1fr)_320px]' : 'grid-cols-[56px_248px_minmax(0,1fr)_320px]')}>
+      <div className={`grid min-h-0 ${COLS}`}>
         <IconRail nou={nou} />
         <SidePanel nou={nou} />
-        <main className="min-h-0 min-w-0 overflow-auto px-[clamp(18px,3vw,44px)] pt-5 pb-12">
+        <main className="flex min-h-0 min-w-0 flex-col">
           <ScriptView nou={nou} />
         </main>
         <RightRail nou={nou} />

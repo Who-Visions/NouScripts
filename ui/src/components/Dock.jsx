@@ -4,6 +4,7 @@ import { ArrowUp, ChevronDown, Plus, Sparkles, Globe, Search, PenLine, X } from 
 import { cn } from '@/lib/utils';
 import { cleanErr } from '@/lib/text';
 import { Button } from '@/components/ui/button';
+import { BAND, GUTTER } from '@/lib/grid';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuLabel,
@@ -18,8 +19,6 @@ const MODELS = [
   ['nvidia/nemotron-3-ultra-550b-a55b', 'Nemotron 3 Ultra'],
   ['mistralai/mistral-large-4-1t-a52b', 'Mistral Large 4'],
 ];
-const label = 'mb-1.5 text-[10px] uppercase tracking-[1.2px] text-faint';
-const mod = 'min-w-0 rounded-lg border bg-card px-3 py-2.5';
 
 export default function Dock({ nou }) {
   const [lane, setLane] = useState('edit');
@@ -86,36 +85,33 @@ export default function Dock({ nou }) {
   const attach = async () => nou.addChips(await window.nou.attach());
   const Lane = LANES[lane].icon;
 
+  // Three cells on the shared column grid, divided by the same vertical lines as the bands above.
   return (
-    <footer className="grid grid-cols-[minmax(260px,1fr)_minmax(0,2.4fr)_minmax(280px,1fr)] gap-3 border-t bg-chrome px-3.5 pt-2.5 pb-3">
-      <section className={mod} aria-label="Model lane">
-        <div className={label}>Producer line · NVIDIA</div>
-        <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 flex-none gap-1.5"><Lane className="size-4" />{LANES[lane].label}<ChevronDown className="size-3.5 opacity-60" /></Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="top" className="w-72 border-border bg-popover">
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-[1.1px] text-faint">Lane</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={lane} onValueChange={setLane}>
-                {Object.entries(LANES).map(([k, l]) => (
-                  <DropdownMenuRadioItem key={k} value={k} className="items-start py-2">
-                    <span className="flex flex-col"><span className="flex items-center gap-1.5 font-medium"><l.icon className="size-3.5" />{l.label}</span>
-                      <span className="text-[11px] leading-snug text-muted-foreground">{l.note}</span></span>
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Select value={model} onValueChange={setModel}>
-            <SelectTrigger size="sm" className="h-8 min-w-0 flex-1 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{MODELS.map(([v, n]) => <SelectItem key={v} value={v}>{n}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <p className="mt-2 text-xs leading-normal text-muted-foreground">{LANES[lane].note}</p>
+    <footer className={cn('grid border-t bg-chrome', BAND)}>
+      <section className="flex min-w-0 items-center gap-2 border-r px-4 py-2.5" aria-label="Model lane" title={LANES[lane].note}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 flex-none gap-1.5"><Lane className="size-4" />{LANES[lane].label}<ChevronDown className="size-3.5 opacity-60" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="top" className="w-72 border-border bg-popover">
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-[1.1px] text-faint">Lane · models run on NVIDIA</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={lane} onValueChange={setLane}>
+              {Object.entries(LANES).map(([k, l]) => (
+                <DropdownMenuRadioItem key={k} value={k} className="items-start py-2">
+                  <span className="flex flex-col"><span className="flex items-center gap-1.5 font-medium"><l.icon className="size-3.5" />{l.label}</span>
+                    <span className="text-[11px] leading-snug text-muted-foreground">{l.note}</span></span>
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Select value={model} onValueChange={setModel}>
+          <SelectTrigger size="sm" className="h-8 min-w-0 flex-1 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>{MODELS.map(([v, n]) => <SelectItem key={v} value={v}>{n}</SelectItem>)}</SelectContent>
+        </Select>
       </section>
 
-      <form onSubmit={submit} className={cn(mod, 'flex flex-col justify-center gap-1.5 focus-within:border-gold/60')}>
+      <form onSubmit={submit} className={cn('flex min-w-0 flex-col justify-center gap-1.5 py-2.5', GUTTER)}>
         {nou.chips.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {nou.chips.map((c) => (
@@ -126,20 +122,20 @@ export default function Dock({ nou }) {
             ))}
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="icon" className="size-[38px] flex-none" onClick={attach} aria-label="Attach files" title="Attach files (sources, notes, transcripts)"><Plus className="size-4" /></Button>
+        <div className="flex items-center gap-2 rounded-lg border border-white/[0.12] bg-[#101012] p-1.5 pl-2 focus-within:border-gold/70">
+          <Button type="button" variant="ghost" size="icon" className="size-8 flex-none" onClick={attach} aria-label="Attach files" title="Attach files (sources, notes, transcripts)"><Plus className="size-4" /></Button>
           <textarea ref={box} rows={1} value={text} onChange={(e) => setText(e.target.value)} placeholder={LANES[lane].ph} aria-label="Instruction"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); } }}
-            className="max-h-[140px] min-h-[38px] flex-1 resize-none bg-transparent px-0.5 py-2 font-read text-[15px] leading-[22px] outline-none placeholder:text-faint" />
-          <Button type="button" variant="outline" className="h-[38px] flex-none gap-1.5 hover:border-nou hover:text-nou" disabled={busy} onClick={digest}
+            className="max-h-[140px] min-h-8 flex-1 resize-none bg-transparent px-0.5 py-[5px] font-read text-[15px] leading-[22px] outline-none placeholder:text-faint" />
+          <Button type="button" variant="outline" size="sm" className="h-8 flex-none gap-1.5 hover:border-nou hover:text-nou" disabled={busy} onClick={digest}
             title="Digest the links in the box: page, PDF, YouTube, audio or video"><Sparkles className="size-4" />Digest</Button>
-          <Button type="submit" variant="outline" size="icon" className="size-[38px] flex-none hover:border-gold hover:text-gold" disabled={busy || !text.trim()} aria-label="Send" title="Send (Enter)"><ArrowUp className="size-4" /></Button>
+          <Button type="submit" variant="outline" size="icon" className="size-8 flex-none hover:border-gold hover:text-gold" disabled={busy || !text.trim()} aria-label="Send" title="Send (Enter)"><ArrowUp className="size-4" /></Button>
         </div>
       </form>
 
-      <section className={mod} aria-label="Last reply">
-        <div className={label}>Last reply</div>
-        <div className={cn('max-h-[92px] overflow-auto text-xs leading-normal break-words text-muted-foreground',
+      <section className="flex min-w-0 flex-col justify-center border-l px-4 py-2.5" aria-label="Last reply">
+        <div className="mb-0.5 text-[10px] uppercase tracking-[1.2px] text-faint">Last reply</div>
+        <div className={cn('line-clamp-2 text-xs leading-snug break-words text-muted-foreground hover:line-clamp-none',
           nou.reply.tone === 'busy' && 'text-gold', nou.reply.tone === 'err' && 'text-destructive')}>
           {nou.reply.text}
           {nou.reply.file && <Button variant="outline" size="sm" className="ml-1.5 h-5 px-1.5 text-[11px]" onClick={() => window.nou.open(nou.reply.file)}>Open</Button>}

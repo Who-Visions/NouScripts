@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { fmtTime, countWords, oneLine, lint, Inline } from '@/lib/text';
 import { Button } from '@/components/ui/button';
+import { GUTTER, HEAD } from '@/lib/grid';
 
 const tag = 'text-[10px] font-bold uppercase tracking-[1px]';
 
@@ -59,7 +60,7 @@ function Editor({ value, onChange, n }) {
   useLayoutEffect(() => { const t = ref.current; if (t) { t.style.height = 'auto'; t.style.height = `${t.scrollHeight + 2}px`; } }, [value]);
   return (
     <textarea ref={ref} value={value} onChange={(e) => onChange(e.target.value)} spellCheck aria-label={`Cue ${n} spoken text`}
-      className={cn('block w-full max-w-[68ch] resize-none overflow-hidden rounded-md border bg-white/[0.03] px-2.5 py-2 font-read text-[18px] leading-[1.6] outline-none focus:border-gold focus:bg-white/[0.05]',
+      className={cn('-mx-2.5 block w-[calc(100%+20px)] max-w-[calc(68ch+20px)] resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2.5 py-1.5 font-read text-[18px] leading-[1.6] caret-gold outline-none hover:bg-white/[0.02] focus:border-gold/40 focus:bg-white/[0.03]',
         !oneLine(value) && 'border-destructive')} />
   );
 }
@@ -80,23 +81,28 @@ function Cue({ nou, c, i }) {
   const edited = nou.writing && oneLine(text) !== oneLine(c.text);
   const chg = d.diff[i];
   const runs = d.changes && d.changes[i];
+  // The timing column already says how long it runs; keep only the words of the hint ("open").
+  const hint = (c.hint || '').replace(/,?\s*~?\d+\s*s\b/i, '').trim();
   return (
-    <article className={cn('group relative rounded-lg border border-transparent bg-[#161618] px-[22px] py-[18px] transition-colors hover:border-border',
+    <article className={cn('group relative rounded-lg border border-white/[0.09] bg-[#101012] px-5 py-3.5 transition-colors hover:border-white/[0.16]',
       edited && 'border-gold/55')}>
-      <span className={cn('absolute top-3.5 bottom-3.5 left-0 w-[3px] rounded-[3px]', c.onCamera ? 'bg-gold' : 'bg-nou')} />
-      <div className="mb-2 flex items-center gap-2.5 text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">{c.n}</span>
+      <span className={cn('absolute top-3.5 bottom-3.5 left-0 w-[2px] rounded-[2px]', c.onCamera ? 'bg-gold' : 'bg-nou')} />
+      <div className="mb-3 flex items-center gap-2 border-b border-white/[0.06] pb-2 text-[11px] text-muted-foreground">
+        <span className="font-mono text-[11px] font-semibold text-foreground tabular-nums">{String(c.n).padStart(2, '0')}</span>
         <span className={cn(tag, c.onCamera ? 'text-gold' : 'text-nou')}>{c.onCamera ? 'ON CAM' : c.kind}</span>
-        {c.hint && <span>{c.hint}</span>}
+        {hint && <span className="whitespace-nowrap">{hint}</span>}
+        {c.fields && c.fields.find((f) => f.key === 'VIDEO') && (
+          <span className="min-w-0 flex-1 truncate border-l border-white/[0.08] pl-2.5 font-mono text-[11px] text-faint" title={c.fields.find((f) => f.key === 'VIDEO').value}>{c.fields.find((f) => f.key === 'VIDEO').value}</span>
+        )}
         {!nou.writing && d.prevVersion && chg !== 'same' && <span className={cn(tag, 'text-muted-foreground')}>{chg === 'new' ? 'new' : 'changed'}</span>}
         {flags.length > 0 && <span className={cn(tag, 'text-destructive')} title={`AI cliché: ${flags.join(', ')}`}>cliché: {flags.join(', ')}</span>}
-        <span className="ml-auto font-mono text-[11px] tabular-nums">{words} words · ~{seconds}s</span>
+        <span className="ml-auto whitespace-nowrap pl-2 font-mono text-[11px] tabular-nums">{words} words · ~{seconds}s</span>
       </div>
       {nou.writing
         ? <Editor n={c.n} value={text} onChange={(v) => nou.setEdit(c.n, v)} />
         : <p className="m-0 max-w-[68ch] font-read text-[18px] leading-[1.6]">{nou.showChanges && runs ? <Runs runs={runs} /> : c.text}</p>}
       {nou.showSources && c.source && (
-        <div className="mt-3 border-t border-dashed pt-2.5 text-xs text-faint"><Inline text={c.source} /></div>
+        <div className="mt-3 border-t border-white/[0.06] pt-2 text-xs text-faint"><Inline text={c.source} /></div>
       )}
     </article>
   );
@@ -109,12 +115,12 @@ function AsBroadcast({ nou }) {
     ['Talent', h.talent || 'Nou'], ['Version', `v${d.version}`], ['TRT', sc.trt]];
   return (
     <>
-      <div className="mb-2.5 flex flex-wrap gap-x-[22px] gap-y-1.5 rounded-lg bg-card px-3.5 py-2.5">
+      <div className="mb-3 flex flex-wrap gap-x-7 gap-y-1.5 border-b border-white/[0.08] px-1 pb-3">
         {head.map(([k, v]) => <div key={k}><span className="block text-[10px] uppercase tracking-[1.1px] text-faint">{k}</span><b className="text-[13px] tabular-nums">{v}</b></div>)}
       </div>
       <table className="w-full table-fixed border-collapse overflow-hidden rounded-lg bg-card">
         <thead>
-          <tr className="bg-[#19191b] text-left text-[10px] uppercase tracking-[1.1px] text-faint">
+          <tr className="border-b border-white/[0.08] bg-[#121214] text-left font-mono text-[10px] uppercase tracking-[1.2px] text-faint">
             <th className="w-[82px] px-3 py-[7px] font-semibold">Time code</th><th className="w-[92px] px-3 py-[7px] font-semibold">Segment</th>
             <th className="w-[27%] px-3 py-[7px] font-semibold">Video</th><th className="px-3 py-[7px] font-semibold">Audio</th>
           </tr>
@@ -158,17 +164,25 @@ function AsBroadcast({ nou }) {
 
 export default function ScriptView({ nou }) {
   const d = nou.data;
-  if (!d) return <p className="text-muted-foreground">{nou.root ? `Put a script_v1.md in a story folder under ${nou.root}.` : 'Loading…'}</p>;
+  if (!d) return <p className={cn(GUTTER, 'pt-5 text-muted-foreground')}>{nou.root ? `Put a script_v1.md in a story folder under ${nou.root}.` : 'Loading…'}</p>;
   const broadcast = nou.view === 'broadcast' && !nou.writing;
+  const cues = d.script.cues;
+  const cam = cues.filter((c) => c.onCamera).length;
   return (
-    <div className={cn(!broadcast && 'max-w-[960px]')}>
-      <Banner d={d} />
-      {nou.writing && <WriteBar nou={nou} />}
-      {broadcast ? <AsBroadcast nou={nou} /> : (
-        <section className="flex flex-col gap-3" aria-live="polite">
-          {d.script.cues.map((c, i) => <Cue key={c.n} nou={nou} c={c} i={i} />)}
-        </section>
-      )}
-    </div>
+    <>
+      <div className={cn(HEAD, GUTTER, 'flex items-center gap-3 font-mono text-[11px] uppercase tracking-[1.4px] text-faint')}>
+        <span>Rundown · {cues.length} cues</span><span className="text-gold">{cam} on cam</span><span className="text-nou">{cues.length - cam} vo</span>
+        <span className="ml-auto tabular-nums">TRT {d.script.trt}</span>
+      </div>
+      <div className={cn('min-h-0 flex-1 overflow-auto pt-5 pb-12', GUTTER)}>
+        <Banner d={d} />
+        {nou.writing && <WriteBar nou={nou} />}
+        {broadcast ? <AsBroadcast nou={nou} /> : (
+          <section className="flex flex-col gap-3" aria-live="polite">
+            {cues.map((c, i) => <Cue key={c.n} nou={nou} c={c} i={i} />)}
+          </section>
+        )}
+      </div>
+    </>
   );
 }

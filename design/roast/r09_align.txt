@@ -1,0 +1,1 @@
+{"divider1_x":{"top":304,"middle":304,"dock":304},"divider2_x":{"top":960,"middle":960,"dock":960},"header_lines_y":[117,117,117,117],"left_edges":{"title":342,"rundown":342,"firstCard":342,"inputBox":342},"right_edges":{"modes":922,"rundown":922,"firstCard":922,"inputBox":922},"overflow":0,"heights":{"top":77,"dock":67}}

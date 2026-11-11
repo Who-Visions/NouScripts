@@ -5,6 +5,7 @@ import { Check, ChevronDown, Eye, FileDown, FolderOpen, FileText, Keyboard, Menu
 import { cn } from '@/lib/utils';
 import { fmtTime, countWords, lint } from '@/lib/text';
 import { Button } from '@/components/ui/button';
+import { BAND, GUTTER } from '@/lib/grid';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
@@ -50,13 +51,22 @@ export default function TopBar({ nou }) {
     try { const r = await window.nou.exportClap(nou.id, nou.version); flash(`Exported ${r.file}`); } catch { flash('Export failed'); }
   };
 
+  const telemetry = stats && [
+    [fmtTime(stats.seconds), 'runtime'],
+    [stats.words, 'words'],
+    [`${fmtTime(sc.onCameraSeconds)} · ${sc.avatarJobs} job${sc.avatarJobs === 1 ? '' : 's'}`, 'on camera'],
+    [stats.flagged ? `${stats.flagged} flagged` : '0', 'clichés'],
+  ];
+
+  // Three cells on the shared column grid: brand (over rail + panel), title + modes (over the script),
+  // view + status (over the right rail). Vertical lines continue the middle band's dividers.
   return (
-    <header className="drag border-b bg-chrome pt-2 pr-[18px] pb-2 pl-[80px]">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="no-drag flex flex-none items-center gap-2">
+    <header className={cn('drag grid border-b bg-chrome', BAND)}>
+      <div className="flex h-[76px] flex-col justify-center border-r pl-[80px] pr-3">
+        <div className="no-drag flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8" aria-label="Menu"><Menu className="size-4" /></Button>
+              <Button variant="ghost" size="icon" className="-ml-1.5 size-8" aria-label="Menu"><Menu className="size-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className={menu}>
               <DropdownMenuLabel className="text-[10px] uppercase tracking-[1.1px] text-faint">Story</DropdownMenuLabel>
@@ -91,10 +101,11 @@ export default function TopBar({ nou }) {
           <span className="size-2 rounded-[2px] bg-gold" />
           <span className="font-semibold">Nou Scripts</span>
         </div>
+        {note && <div className="mt-1 truncate pl-1 text-[11px] text-gold">{note}</div>}
+      </div>
 
-        <span className="h-5 w-px flex-none bg-border" />
-
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className={cn('flex min-w-0 flex-col justify-center gap-1.5', GUTTER)}>
+        <div className="flex min-w-0 items-center gap-2">
           <h1 className="truncate text-[17px] font-bold tracking-tight">{sc ? sc.title : 'Loading…'}</h1>
           {d && (
             <DropdownMenu>
@@ -115,48 +126,54 @@ export default function TopBar({ nou }) {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {d && <span className="hidden truncate text-[11px] text-muted-foreground xl:inline">edited {d.modified}{d.prevVersion ? ` · vs v${d.prevVersion}` : ''}</span>}
-          {note && <span className="truncate text-[11px] text-gold">{note}</span>}
-        </div>
-
-        {d && (
-          <div className="no-drag flex flex-none items-center gap-2">
-            <ToggleGroup type="single" value={mode} onValueChange={setMode} className="h-8 rounded-md border bg-card p-0.5" aria-label="View">
+          {d && (
+            <ToggleGroup type="single" value={mode} onValueChange={setMode} className="no-drag ml-auto h-8 flex-none rounded-md border bg-card p-0.5" aria-label="View">
               <ToggleGroupItem value="read" className={segItem}>Read</ToggleGroupItem>
               <ToggleGroupItem value="write" className={segItem}>Write</ToggleGroupItem>
               <ToggleGroupItem value="broadcast" className={segItem}>As Broadcast</ToggleGroupItem>
               <ToggleGroupItem value="prompt" className={segItem}>Teleprompter</ToggleGroupItem>
             </ToggleGroup>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1.5"><Eye className="size-4" />View<ChevronDown className="size-3.5 opacity-60" /></Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className={menu}>
-                <DropdownMenuCheckboxItem checked={nou.showChanges} disabled={!d.prevVersion} onCheckedChange={nou.setShowChanges}>
-                  Changes since v{d.prevVersion || '-'}<span className="ml-auto pl-4 text-[11px] tabular-nums text-faint">{changed}</span>
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem checked={nou.showSources} onCheckedChange={nou.setShowSources}>Source notes</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem checked={!nou.railCollapsed} onCheckedChange={(v) => nou.setRailCollapsed(!v)}>Side panel</DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          )}
+        </div>
+        {telemetry && (
+          <div className="flex min-w-0 items-baseline divide-x divide-white/[0.08] font-mono text-[11px] text-muted-foreground tabular-nums">
+            {telemetry.map(([b, s], i) => (
+              <span key={s} className="whitespace-nowrap px-3 first:pl-0">
+                <b className={cn('mr-1.5 text-foreground', i === 3 && stats.flagged && 'text-destructive')}>{b}</b>{s}
+              </span>
+            ))}
+            <span className="ml-auto whitespace-nowrap !border-l-0 text-faint" title={`edited ${d.modified}`}>{d.modified.replace(/^\w+,\s*/, '').replace(/\s+E[SD]T$/, '')}</span>
           </div>
         )}
       </div>
 
-      {stats && (
-        <div className="mt-1.5 flex flex-wrap items-baseline pl-10 text-[11px] text-muted-foreground tabular-nums">
-          {[
-            [fmtTime(stats.seconds), 'estimated runtime'],
-            [stats.words, 'spoken words'],
-            [`${fmtTime(sc.onCameraSeconds)} · ${sc.avatarJobs} job${sc.avatarJobs === 1 ? '' : 's'}`, 'on camera · OmniAvatar'],
-            [stats.flagged ? `${stats.flagged} flagged` : '0 clichés', 'voice lint'],
-          ].map(([b, s], i) => (
-            <span key={s} className={cn('px-2', i > 0 && 'border-l')}>
-              <b className={cn('mr-1.5 text-[13px] text-foreground', i === 3 && stats.flagged && 'text-destructive')}>{b}</b>{s}
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="flex min-w-0 flex-col justify-center gap-1.5 border-l px-4">
+        {d && (
+          <>
+            <div className="no-drag flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5"><Eye className="size-4" />View<ChevronDown className="size-3.5 opacity-60" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className={menu}>
+                  <DropdownMenuCheckboxItem checked={nou.showChanges} disabled={!d.prevVersion} onCheckedChange={nou.setShowChanges}>
+                    Changes since v{d.prevVersion || '-'}<span className="ml-auto pl-4 text-[11px] tabular-nums text-faint">{changed}</span>
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={nou.showSources} onCheckedChange={nou.setShowSources}>Source notes</DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={!nou.railCollapsed} onCheckedChange={(v) => nou.setRailCollapsed(!v)}>Side panel</DropdownMenuCheckboxItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <span className={cn('ml-auto flex items-center gap-1.5 text-[11px]', approvedV === d.version ? 'text-ok' : 'text-gold')}>
+                <span className={cn('size-1.5 rounded-full', approvedV === d.version ? 'bg-ok' : 'bg-gold')} />
+                {approvedV === d.version ? `v${d.version} approved` : 'Not approved'}
+              </span>
+            </div>
+            <div className="font-mono text-[11px] text-faint tabular-nums">
+              {d.prevVersion ? `${changed} of ${sc.cues.length} cues changed since v${d.prevVersion}` : 'First version'}
+            </div>
+          </>
+        )}
+      </div>
     </header>
   );
 }

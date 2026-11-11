@@ -1,3 +1,7 @@
 loop/*.png
 loop/*.err
 loop/*.log
+roast/r*.png
+roast/align1.png
+roast/align2.png
+roast/*.err
