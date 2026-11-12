@@ -602,11 +602,45 @@ function parseEdl(md, fps = 24) {
   return { cuts, totalFrames, fps, seconds: Math.round((totalFrames / fps) * 1000) / 1000, checks };
 }
 
-function loadProduction(dir) {
+// A production doc is any other .md in production/: its title, tables, fenced code and Checks bullets.
+function parseProductionDoc(name, md) {
+  const text = String(md || '');
+  const title = ((/^#\s+(.+)$/m.exec(text) || [])[1] || name.replace(/\.md$/, '')).replace(/:.*$/, '').trim();
+  const code = []; const rx = /```[^\n]*\n([\s\S]*?)```/g; let m;
+  while ((m = rx.exec(text))) code.push(m[1].replace(/\n$/, ''));
+  return { name, title, tables: parseMdTables(text.replace(/```[\s\S]*?```/g, '')), code, checks: parseEdl(text).checks };
+}
+
+const IMAGE_RX = /\.(png|jpe?g|webp|gif)$/i;
+// Files: top level plus one folder down. A folder of rendered frames is summarised, not listed frame by frame.
+function listProductionFiles(pdir) {
+  const out = [];
+  for (const f of fs.readdirSync(pdir).filter((x) => !x.startsWith('.')).sort()) {
+    const p = path.join(pdir, f);
+    if (!fs.statSync(p).isDirectory()) { out.push({ name: f, path: p }); continue; }
+    for (const g of fs.readdirSync(p).filter((x) => !x.startsWith('.')).sort()) {
+      const q = path.join(p, g);
+      if (!fs.statSync(q).isDirectory()) { out.push({ name: `${f}/${g}`, path: q }); continue; }
+      const frames = fs.readdirSync(q).filter((x) => IMAGE_RX.test(x));
+      out.push({ name: `${f}/${g}/`, path: q, note: `${frames.length} rendered frames` });
+    }
+  }
+  return out;
+}
+
+function loadProduction(dir, storyId) {
   const pdir = path.join(dir, 'production');
   if (!fs.existsSync(pdir)) return null;
   const read = (f) => { try { return fs.readFileSync(path.join(pdir, f), 'utf8'); } catch { return ''; } };
-  const files = fs.readdirSync(pdir).filter((f) => !f.startsWith('.')).sort().map((f) => ({ name: f, path: path.join(pdir, f) }));
+  const files = listProductionFiles(pdir);
+  const docs = fs.readdirSync(pdir).filter((f) => /\.md$/i.test(f) && !['edl.md', 'audio.md'].includes(f)).sort()
+    .map((f) => parseProductionDoc(f, read(f)));
+  // Stills: images in the story's media/ folder named hud_* or prod_*, served through nou-media://.
+  let stills = [];
+  try {
+    stills = fs.readdirSync(path.join(dir, 'media')).filter((f) => /^(hud|prod)_/.test(f) && IMAGE_RX.test(f)).sort()
+      .map((f) => ({ name: f, path: path.join(dir, 'media', f), src: storyId ? mediaUrl(storyId, f) : null }));
+  } catch { stills = []; }
   let veo = null;
   try { veo = JSON.parse(read('veo_payloads.json')); } catch { veo = null; }
   const stems = parseMdTables(read('audio.md'))[0] || null;
@@ -614,12 +648,12 @@ function loadProduction(dir) {
     dir: pdir, files, edl: parseEdl(read('edl.md')),
     clips: veo && Array.isArray(veo.clips) ? veo.clips : [],
     clipSeconds: veo && Array.isArray(veo.clips) ? veo.clips.reduce((a, c) => a + (Number(c.duration_s) || 0), 0) : 0,
-    clipStatus: (veo && veo.status) || '', stems, vfx: read('vfx.yaml'),
+    clipStatus: (veo && veo.status) || '', stems, vfx: read('vfx.yaml'), docs, stills,
   };
 }
 
 module.exports = {
-  parseMdTables, parseEdl, loadProduction,
+  parseMdTables, parseEdl, loadProduction, parseProductionDoc,
   mediaUrl, resolveMediaUrl, decodeEntities,
   extractMedia, mergeMedia, mediaKind,
   digestMessages,

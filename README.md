@@ -170,5 +170,8 @@ A story with a `production/` folder gets a **Commercial** view next to As Broadc
 - `veo_payloads.json`: `{ status, clips: [{ clip_id, duration_s, camera, prompt, audio_cue }] }` becomes the generation clips, each with Copy prompt. The app never runs them.
 - `audio.md`: its first table becomes the audio stems.
 - `vfx.yaml`: shown as written.
+- Any other `.md` (for example `camera_lighting.md`, `lipsync.md`) becomes its own section, named from its title: fenced blocks, tables and Checks bullets. Tables wider than five columns show as one card per row; a value of ` · `-separated parts (viseme anchors) stacks.
+- Images in the story's `media/` folder named `hud_*` or `prod_*` show under Renders.
+- Files lists one folder down; a folder of rendered frames shows as a count.
 
 The header strip shows cuts, frames, edit length, clip total and the script version and running time, so a mismatch between the edit and the script is visible at a glance.
