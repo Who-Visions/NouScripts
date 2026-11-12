@@ -169,5 +169,35 @@ class SpotEngineTest(unittest.TestCase):
             F.KEYFRAME_LANES.update(saved)
 
 
+    def test_voice_schedule_never_overlaps_and_caps_speed(self):
+        import voices as Vo
+        rows = Vo.read_lines(HERE / "profiles" / "nougenshards_lines.tsv")
+        self.assertEqual(len(rows), 11)
+        self.assertEqual(rows[-1]["voice"], "af_sky")
+        # trimmed Kokoro durations measured 2026-11-12 (seconds, at speed 1.12)
+        dur = dict(zip([r["id"] for r in rows], [3.40, 2.78, 6.66, 1.17, 1.51, 0.86, 2.02, 1.64, 1.00, 4.17, 3.29]))
+        plan = Vo.schedule(rows, dur)
+        for a, b in zip(plan, plan[1:]):
+            self.assertLessEqual(a["end"] + Vo.GAP - 1e-6, b["start"], (a, b))
+        self.assertTrue(all(1.0 <= p["speed"] <= Vo.MAX_SPEED for p in plan))
+        self.assertLessEqual(max(abs(p["drift_frames"]) for p in plan), 2)
+        self.assertLessEqual(plan[-1]["end"], 31.0)
+
+    def test_voice_lines_file_is_strict(self):
+        import voices as Vo
+        bad = self.tmp / "bad.tsv"
+        bad.write_text("01\tam_michael\t4\tHello\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "5 tab-separated"):
+            Vo.read_lines(bad)
+        bad.write_text("02\tv\t50\t60\tB\n01\tv\t4\t10\tA\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "start-frame order"):
+            Vo.read_lines(bad)
+
+    def test_assembler_writes_stereo_faststart_and_warns_without_a_mix(self):
+        sh = E.CommercialCompiler(profile(), self.tmp).build_ffmpeg_assembler().read_text()
+        self.assertIn("-ac 2 -movflags +faststart", sh)
+        self.assertIn("WARNING: no", sh)
+
+
 if __name__ == "__main__":
     unittest.main()
