@@ -14,7 +14,7 @@ export function useNou() {
   const [data, setData] = useState(null);
   const [panel, setPanelState] = useState(stored('nou-panel', 'stories'));
   const [railCollapsed, setRailCollapsedState] = useState(stored('nou-rail-collapsed', 'false') === 'true' || params.get('rail') === 'collapsed');
-  const [view, setView] = useState(params.get('mode') === 'broadcast' ? 'broadcast' : 'read');
+  const [view, setView] = useState(['broadcast', 'commercial'].includes(params.get('mode')) ? params.get('mode') : 'read');
   const [writing, setWritingState] = useState(false);
   const [edits, setEdits] = useState({});
   const [prompter, setPrompter] = useState(params.get('mode') === 'prompt');
@@ -22,6 +22,7 @@ export function useNou() {
   const [showChanges, setShowChanges] = useState(true);
   const [media, setMedia] = useState([]);
   const [files, setFiles] = useState({ desk: [], sources: [] });
+  const [production, setProduction] = useState(null);
   // Producer line (bottom dock), shared so the side panel can attach files or send a link to Digest.
   const [chips, setChips] = useState([]);
   const [reply, setReplyState] = useState({ text: 'Nothing asked yet.', tone: '', file: null });
@@ -60,6 +61,9 @@ export function useNou() {
     if (!sid || v == null) return;
     const d = await window.nou.load(sid, v);
     setData(d);
+    // The Commercial tab only exists for stories with a production/ folder.
+    setProduction(d.hasProduction ? await window.nou.production(sid) : null);
+    if (!d.hasProduction) setView((cur) => (cur === 'commercial' ? 'read' : cur));
     refreshAux(sid);
   }, [refreshAux]);
 
@@ -131,7 +135,7 @@ export function useNou() {
   const story = stories.find((s) => s.id === id) || null;
   return {
     root, stories, story, id, version, data, panel, railCollapsed, view, writing, edits, dirtyEdits, dirty, prompter,
-    showSources, showChanges, media, files,
+    showSources, showChanges, media, files, production,
     refresh, refreshAux, selectStory, selectVersion, setPanel, setRailCollapsed, setView, setWriting, setEdit, save, approve,
     setPrompter, setShowSources, setShowChanges, scriptCues, leaveOk,
     chips, addChips, removeChip, reply, setReply, pendingDigest, setPendingDigest, requestDigest, openFile,

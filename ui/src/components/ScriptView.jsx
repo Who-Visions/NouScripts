@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { fmtTime, countWords, oneLine, lint, Inline } from '@/lib/text';
 import { Button } from '@/components/ui/button';
 import { GUTTER, HEAD } from '@/lib/grid';
+import Commercial from '@/components/Commercial';
 
 const tag = 'text-[10px] font-bold uppercase tracking-[1px]';
 
@@ -166,6 +167,7 @@ export default function ScriptView({ nou }) {
   const d = nou.data;
   if (!d) return <p className={cn(GUTTER, 'pt-5 text-muted-foreground')}>{nou.root ? `Put a script_v1.md in a story folder under ${nou.root}.` : 'Loading…'}</p>;
   const broadcast = nou.view === 'broadcast' && !nou.writing;
+  const commercial = nou.view === 'commercial' && !nou.writing;
   const cues = d.script.cues;
   const cam = cues.filter((c) => c.onCamera).length;
   return (
@@ -177,7 +179,7 @@ export default function ScriptView({ nou }) {
       <div className={cn('min-h-0 flex-1 overflow-auto pt-5 pb-12', GUTTER)}>
         <Banner d={d} />
         {nou.writing && <WriteBar nou={nou} />}
-        {broadcast ? <AsBroadcast nou={nou} /> : (
+        {commercial ? <Commercial nou={nou} /> : broadcast ? <AsBroadcast nou={nou} /> : (
           <section className="flex flex-col gap-3" aria-live="polite">
             {cues.map((c, i) => <Cue key={c.n} nou={nou} c={c} i={i} />)}
           </section>
