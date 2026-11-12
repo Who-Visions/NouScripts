@@ -209,5 +209,50 @@ class SpotEngineTest(unittest.TestCase):
         self.assertNotIn("S Q Lite", text)
 
 
+    # ---------- post pass (pure parts) ----------
+    def _post(self):
+        sys.path.insert(0, str(HERE / "post"))
+        import post as P
+        import track as Tr
+        return P, Tr
+
+    def test_captions_split_at_clauses_and_stay_short(self):
+        P, _ = self._post()
+        parts = P.split_caption("Every session loses context. And that's why we built NouGenShards, to power three dimensions of agent memory.")
+        self.assertEqual(parts[0], "Every session loses context.")
+        self.assertTrue(all(len(x) <= 55 for x in parts), parts)
+        self.assertEqual(" ".join(parts).replace("  ", " "), "Every session loses context. And that's why we built NouGenShards, to power three dimensions of agent memory.")
+
+    def test_captions_clamp_small_overruns_to_the_cut_but_keep_real_carryovers(self):
+        P, _ = self._post()
+        prof = json.loads((HERE / "post" / "profiles" / "nougenshards_post.json").read_text())
+        plan = [{"id": "a", "start": 0.167, "end": 3.48},      # ends F86 in a cut that ends F82: clamp
+                {"id": "b", "start": 19.1, "end": 20.67}]      # ends F498 in a cut ending F484: 14 frames, clamp
+        cues = P.build_captions(plan, {"a": "Short line.", "b": "Eighty-seven sixty-six."}, prof)
+        self.assertEqual(cues[0]["to"], 82)
+        self.assertEqual(cues[1]["to"], 484)
+        far = P.build_captions([{"id": "c", "start": 7.0, "end": 9.5}], {"c": "Carried over."}, prof)   # J-cut, 46 frames over
+        self.assertGreater(far[0]["to"], 184)
+
+    def test_written_captions_undo_the_spoken_spellings(self):
+        P, _ = self._post()
+        prof = json.loads((HERE / "post" / "profiles" / "nougenshards_post.json").read_text())
+        t = P.written_texts(HERE / "profiles" / "nougenshards_lines.tsv", prof)
+        self.assertIn("SQLite", t["02"])
+        self.assertEqual(t["05"], "FTS5, WAL mode!")
+
+    def test_track_picks_follows_and_glides_into_the_hand(self):
+        _, Tr = self._post()
+        faces = {f: [{"x": 0.3, "top": 0.2, "w": 0.1, "h": 0.2}, {"x": 0.7 + f * 0.001, "top": 0.4, "w": 0.1, "h": 0.15}] for f in range(10, 31)}
+        chosen = Tr.follow(faces, 10, 30, "rightmost")
+        self.assertTrue(all(c["x"] > 0.6 for c in chosen.values()))
+        self.assertEqual(Tr.pick(faces[20], "smallest")["h"], 0.15)
+        track = Tr.wheel_positions(chosen, 10, 30, "w", 75)
+        self.assertTrue(all(v["r"] <= 75 for v in track.values()))
+        Tr.glide(track, "w", 28, (100.0, 50.0), 10)
+        self.assertEqual((track[28]["x"], track[28]["y"]), (100.0, 50.0))
+        self.assertNotEqual(track[18]["x"], 100.0)
+
+
 if __name__ == "__main__":
     unittest.main()

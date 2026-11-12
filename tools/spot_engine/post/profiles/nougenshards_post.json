@@ -1,0 +1,49 @@
+{
+  "fps": 24,
+  "frames": 744,
+  "cuts": [[0, 83], [83, 185], [185, 253], [253, 315], [315, 385], [385, 485], [485, 561], [561, 653], [653, 744]],
+  "wheels": {
+    "accent": "#00E676",
+    "close_up_max_radius": 75,
+    "glide_frames": 10,
+    "spans": [
+      {"id": "wheel_01a", "frames": [133, 184], "pick": "only", "birth": [133, 139]},
+      {"id": "wheel_01b", "frames": [315, 343], "pick": "rightmost", "clear": 338},
+      {"id": "wheel_02", "frames": [385, 452], "pick": "rightmost", "clear": 439},
+      {"id": "wheel_03", "frames": [485, 532], "pick": "smallest", "clear": 519, "blur": 2.2}
+    ]
+  },
+  "wordmark": {"title": "NouGenShards", "subtitle": "LOCAL-FIRST MEMORY", "x": 0.06, "y": 0.13, "hold_to": 18, "fade_to": 32},
+  "supers": [
+    {"text": "LOCAL SQLITE FTS5 SUBSTRATE. LOCAL RECALL, NO CLOUD ROUND TRIP.", "from": 190, "to": 310, "y": 0.92}
+  ],
+  "terminal": {
+    "cmd": "nougen search \"migration fix\"",
+    "result": "→ fix(sql): harden FTS5 MATCH tokenization · Oct 12, 2026",
+    "result_source": "NouGenShards commit 7f6cbd70, 2026-10-12 (a real fix; never invent a result line)",
+    "from": 342, "to": 384, "type_frames": 10, "result_from": 342
+  },
+  "end_card": {
+    "from": 653,
+    "banner": "NouGenShards  |  Recall Faster",
+    "modules": [["Shards-Lite", 0.2515], ["Shards Core", 0.4225], ["Fleet MCP", 0.5955], ["Sync Mesh", 0.7645]],
+    "disclaimer": "SOURCE-AVAILABLE LOCAL SUBSTRATE. MULTI-NODE FEDERATION READY.",
+    "address": "github.com/Who-Visions/NouGenShards",
+    "footer": "Works with GitHub, SQLite, Ollama, Hugging Face"
+  },
+  "caption_layout": {"lift_ranges": [[190, 310]], "end_card_y": 0.205, "max_chars": 55, "clamp_to_cut_frames": 16},
+  "caption_spoken_to_written": {"S Q L ite": "SQLite", "F T S five, wall mode!": "FTS5, WAL mode!"},
+  "hud_still": {
+    "plate": "hud_plate.jpg",
+    "first_frame": 561, "frames": 92,
+    "dim": {"brightness": -0.16, "saturation": 0.30},
+    "push_in": 0.05,
+    "pulse": {"from": 635, "to": 652, "gain": 0.06},
+    "reveals": [
+      {"name": "cyan", "box": [40, 120, 900, 470], "blur": 110, "at": 575},
+      {"name": "emerald", "box": [40, 600, 900, 470], "blur": 110, "at": 595},
+      {"name": "amber", "box": [1100, 320, 820, 540], "blur": 140, "at": 615}
+    ],
+    "always_lit": [{"name": "header", "box": [0, 0, 1920, 150], "blur": 60}]
+  }
+}

@@ -30,34 +30,21 @@ function inRoot(p) {
   return abs === root || abs.startsWith(root + path.sep);
 }
 
+// The approval goes out through the nougen msg CLI, which holds the node token and reaches every lane.
+// (It used to POST to 127.0.0.1:8766/messages first; that route does not exist, the node's route is /msg and
+// needs the token, so every approval paid a failed request before the CLI ran. Measured 2026-11-12: 404.)
 async function broadcastApproval(storyId, version, note) {
   const text = `[APPROVED] Story "${storyId}" script v${version} approved by Dave${note ? ` ("${note}")` : ''}`;
-  try {
-    const res = await fetch('http://127.0.0.1:8766/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sender: 'phoebus/nouscripts',
-        to: '@all',
-        content: text,
-      }),
-      signal: AbortSignal.timeout(1500),
-    });
-    if (res.ok) {
-      console.log('Broadcasted approval to MsgNode 8766');
-      return;
-    }
-  } catch {
-    // MsgNode not responding on 8766; fall back to CLI
+  const nougenBin = process.env.NOUGEN_BIN
+    || path.join(require('os').homedir(), 'The Observatory', 'NouGen', 'nougenshards', '.venv', 'bin', 'nougen');
+  if (!fs.existsSync(nougenBin)) {
+    console.log('approval broadcast skipped: no nougen CLI at', nougenBin);
+    return;
   }
-
-  const nougenBin = path.join(require('os').homedir(), 'The Observatory', 'NouGen', 'nougenshards', '.venv', 'bin', 'nougen');
-  if (fs.existsSync(nougenBin)) {
-    execFile(nougenBin, ['msg', '--to', '@all', text], (err) => {
-      if (err) console.log('nougen msg fallback skipped:', err.message);
-      else console.log('Broadcasted approval via nougen msg CLI');
-    });
-  }
+  execFile(nougenBin, ['msg', '--to', '@all', text], { timeout: 60000 }, (err) => {
+    if (err) console.log('approval broadcast failed:', err.message);
+    else console.log('Broadcasted approval via nougen msg');
+  });
 }
 
 ipcMain.handle('stories:list', () => ({
