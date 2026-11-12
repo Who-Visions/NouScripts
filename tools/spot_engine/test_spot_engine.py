@@ -124,6 +124,29 @@ class SpotEngineTest(unittest.TestCase):
             spoken = E.CommercialCompiler(spec, self.tmp / name).prompts()
             self.assertIn(spec.hook_line, spoken["01_hook"])
 
+    def test_keyframe_lanes_fall_back_in_order_and_record_failures(self):
+        import free_lanes as F
+        calls = []
+
+        def boom(prompt, dst, tmp):
+            calls.append("a")
+            raise RuntimeError("quota")
+
+        def ok(prompt, dst, tmp):
+            calls.append("b")
+            dst.write_bytes(b"png")
+
+        saved = dict(F.KEYFRAME_LANES)
+        try:
+            F.KEYFRAME_LANES.update({"a": boom, "b": ok})
+            lane, failed = F.make_keyframe("p", self.tmp / "k.png", ["a", "b"], self.tmp)
+        finally:
+            F.KEYFRAME_LANES.clear()
+            F.KEYFRAME_LANES.update(saved)
+        self.assertEqual((lane, calls), ("b", ["a", "b"]))
+        self.assertTrue(failed and failed[0].startswith("a: RuntimeError"))
+        self.assertNotIn("pollinations", F.DEFAULT_KEYFRAME_LANES)
+
 
 if __name__ == "__main__":
     unittest.main()
