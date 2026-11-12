@@ -68,7 +68,7 @@ def lane_cloudflare(prompt: str, dst: Path, tmp: Path) -> None:
     acct = keymaker_secret("CLOUDFLARE_ACCOUNT_ID")
     r = requests.post(f"https://api.cloudflare.com/client/v4/accounts/{acct}/ai/run/@cf/black-forest-labs/flux-1-schnell",
                       headers={"Authorization": f"Bearer {keymaker_secret('CLOUDFLARE_API_TOKEN')}"},
-                      json={"prompt": prompt, "steps": 8, "seed": SEED}, timeout=90)
+                      json={"prompt": prompt, "steps": 8}, timeout=90)   # the schema refuses a seed
     img = r.json().get("result", {}).get("image") if r.ok else None
     if not img:
         raise RuntimeError(f"cloudflare {r.status_code}: {r.text[:200]}")
@@ -100,20 +100,24 @@ KEYFRAME_LANES = {"agy": lane_agy, "cloudflare": lane_cloudflare, "hf": lane_hf,
 
 
 def make_keyframe(prompt: str, dst: Path, lanes: list[str], tmp: Path) -> tuple[str, list[str]]:
-    """Try each lane in order; return the lane that answered and the failures before it."""
+    """Try each lane in order; return the lane that answered and the failures before it. A lane that reports a
+    quota or rate limit is removed from `lanes` (the caller's list) so the rest of the run does not retry it."""
     failures = []
-    for name in lanes:
+    for name in list(lanes):
         try:
             KEYFRAME_LANES[name](prompt, dst, tmp)
             return name, failures
         except Exception as e:
-            failures.append(f"{name}: {type(e).__name__}: {str(e)[:160]}")
+            msg = f"{type(e).__name__}: {str(e)[:160]}"
+            failures.append(f"{name}: {msg}")
+            if QUOTA_RX.search(msg) or "RESOURCE_EXHAUSTED" in msg:
+                lanes.remove(name)
     raise RuntimeError("every keyframe lane failed: " + " | ".join(failures))
 
 
 def visual_prompt(clip: dict) -> str:
     """The engine writes a visual_prompt with no spoken lines or on-screen copy; add the photographic finish."""
-    return clip["visual_prompt"].rstrip(". ") + ". Photorealistic, natural skin texture, cinematic lighting, no text."
+    return clip["visual_prompt"].rstrip(". ") + ". Photorealistic, natural skin texture, cinematic lighting, no text, no lettering, no logos."
 
 
 def keymaker_secret(name: str) -> str:
@@ -188,9 +192,9 @@ def run(build_dir: Path, only: list[str] | None = None, keyframes_only: bool = F
             msg = f"{type(e).__name__}: {str(e)[:300]}"
             st.update({"state": "quota" if QUOTA_RX.search(msg) else "error", "error": msg})
             save_status(status_path, status)
-            print(f"[{cid}] stopped: {msg}")
-            if st["state"] == "quota":
-                break
+            print(f"[{cid}] stopped: {msg[:300]}")
+            if not lanes or (st["state"] == "quota" and key_png.exists()):
+                break            # no keyframe lane left, or the video lane is out of quota
             continue
         save_status(status_path, status)
 

@@ -192,27 +192,37 @@ class CommercialCompiler:
         def copy(text: str, blank: str) -> str:
             return blank if visual else text
 
+        # The stall wheel is a VFX asset (composited in post, see vfx.yaml). Asked to draw it, picture models
+        # draw hardware (a car wheel, a dial, a wall clock), so visual prompts keep only the gesture.
+        fx = copy
+
         end = copy(f" A monospace address line reads '{s.end_card_address}'.", "") if s.end_card_address else ""
         out = {
             "01_hook": (f"35mm T2.2 medium shot, slow dolly in, {s.studio_setting}. {who} in {s.wardrobe_spec} "
                         f"lowers {s.hero_prop_hook} and looks into the lens" + say(", and says: ", s.hook_line, ", speaking to camera") + "."),
             "02_stall_p1": (f"{p1.lens_spec} over-the-shoulder shot at {p1.setting_zone}. {p1.actor_role}"
-                            + say(" asks: ", p1.stall_question, " looks up, searching their memory") + ". "
-                            f"A glossy 3D white 12-spoke loading wheel pops in six inches above their head."),
+                            + say(" asks: ", p1.stall_question, " looks up, searching their memory") + "."
+                            + fx(" A glossy 3D white 12-spoke loading wheel pops in six inches above their head.", "")),
             "03a_walk_in": (f"35mm T2.8 Steadicam backward tracking shot in {s.studio_setting}. {who} walks "
-                            f"toward the lens, facing the camera, holding {s.hero_artifact}" + say(", saying: ", s.intervention_line, ", talking to camera") + "."),
+                            f"toward the lens, facing the camera" + copy("", " (front view, face visible)")
+                            + f", holding {s.hero_artifact}" + say(", saying: ", s.intervention_line, ", talking to camera") + "."),
             "03b_macro_drop": (f"85mm T4.0 tabletop macro. A hand sets {s.hero_artifact} with {accent} accents firmly on the "
                                f"desk centre at frame 11, releasing cleanly as a specular sweep crosses the bevel."),
             "04_clear_p1": (f"{p1.lens_spec} low-angle two-shot. {who}" + say(" says ", p1.spokesperson_cue) +
-                            f" {p1.clear_gesture} the 3D wheel above {p1.actor_role}, shattering it into {accent} sparks. "
-                            f"{p1.actor_role}" + say(" exclaims: ", p1.resolved_answer, "'s face lights up") + "."),
-            "05_clear_p2": (f"{p2.lens_spec} {p2.camera_rig} to {p2.setting_zone}. {p2.actor_role}, under a spinning 3D wheel,"
+                            fx(f" {p1.clear_gesture} the 3D wheel above {p1.actor_role}, shattering it into {accent} sparks. ",
+                               f" reaches up and pinches the empty air above {p1.actor_role}'s head. ")
+                            + f"{p1.actor_role}" + say(" exclaims: ", p1.resolved_answer, "'s face lights up") + "."),
+            "05_clear_p2": (f"{p2.lens_spec} {p2.camera_rig} to {p2.setting_zone}. {p2.actor_role}"
+                            + fx(", under a spinning 3D wheel,", ",")
                             + say(" asks: ", p2.stall_question, " squints") + f". {who}"
-                            + say(" says ", p2.spokesperson_cue, " steps in") + f", {p2.clear_gesture} the wheel away, and "
-                            f"{p2.actor_role}" + say(" replies: ", p2.resolved_answer, " grins") + "."),
-            "06_clear_p3": (f"{p3.lens_spec} {p3.camera_rig} around {p3.actor_role} stalled at {p3.setting_zone} under a 3D wheel. "
-                            f"{who} walks past" + say(" saying ", p3.spokesperson_cue) + f", {p3.clear_gesture} the wheel "
-                            f"into {accent} motes; {p3.actor_role} goes back to work."),
+                            + say(" says ", p2.spokesperson_cue, " steps in")
+                            + fx(f", {p2.clear_gesture} the wheel away, and ", ", flicks a finger at the air above their head, and ")
+                            + f"{p2.actor_role}" + say(" replies: ", p2.resolved_answer, " grins") + "."),
+            "06_clear_p3": (f"{p3.lens_spec} {p3.camera_rig} around {p3.actor_role} stalled at {p3.setting_zone}"
+                            + fx(" under a 3D wheel. ", ". ")
+                            + f"{who} walks past" + say(" saying ", p3.spokesperson_cue)
+                            + fx(f", {p3.clear_gesture} the wheel into {accent} motes; ", ", sweeps a hand through the air above their head; ")
+                            + f"{p3.actor_role} goes back to work."),
             "07_hud_lattice": (f"50mm orbital camera inside a dark HUD ({s.palette['hud_bg_inner']}). A rotating 3D lattice at centre. "
                                f"Three callouts lock on one after another in {p1.hex_color}" + copy(f" ('{p1.hud_label}')", "") +
                                f", {p2.hex_color}" + copy(f" ('{p2.hud_label}')", "") + f" and {p3.hex_color}" + copy(f" ('{p3.hud_label}')", "") +
