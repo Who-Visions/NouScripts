@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Spot overlay rig: stall wheel, supers, captions, terminal, end-card type</title>
+<style>html, body { margin: 0; background: transparent; overflow: hidden; } canvas { display: block; }</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+// Deterministic: window.renderOverlay(f) draws everything for global frame f on a transparent 1920x1080 canvas.
+// Everything spot-specific comes from overlay_data.json, written by post.py from a post profile
+// (profiles/<spot>_post.json) plus the measured wheel track and the voice plan's captions.
+const W = 1920, H = 1080;
+const SANS = '-apple-system, "SF Pro Display", "Helvetica Neue", Helvetica, sans-serif';
+const MONO = '"SF Mono", SFMono-Regular, Menlo, monospace';
+const ctx = document.getElementById('c').getContext('2d');
+let D = null;
+
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const ease = (t) => 1 - Math.pow(1 - t, 3);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fade = (f, a, b, inF = 6, outF = 6) => f < a || f > b ? 0 : Math.min(1, (f - a) / inF, (b - f) / outF);
+
+// The stall wheel (vfx.yaml asset_01): 12 glossy fins, a 3-fin accent chase at 540 deg/s.
+function wheel(x, y, r, f, scale, alpha, accent) {
+  if (alpha <= 0 || scale <= 0) return;
+  const deg = f * 540 / D.fps, rot = deg * Math.PI / 180, lead = Math.floor(deg / 30) % 12;
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(scale, scale); ctx.globalAlpha = alpha;
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = r * 0.18; ctx.shadowOffsetY = r * 0.06;
+  const inner = r * 0.43, len = r - inner, fw = r * 0.16;
+  for (let i = 0; i < 12; i++) {
+    const hot = (lead - i + 12) % 12 < 3;
+    ctx.save(); ctx.rotate(rot + i * Math.PI / 6);
+    const g = ctx.createLinearGradient(inner, -fw / 2, inner, fw / 2);
+    g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.5, '#F4F7F6'); g.addColorStop(1, '#C9D2CE');
+    ctx.fillStyle = hot ? accent : g;
+    if (hot) { ctx.shadowColor = accent; ctx.shadowBlur = r * 0.35; ctx.shadowOffsetY = 0; }
+    ctx.beginPath(); ctx.roundRect(inner, -fw / 2, len, fw, fw / 2); ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function burst(x, y, r, age, seed, accent) {         // 24 motes, 6-frame life, drag
+  if (age < 0 || age > 6) return;
+  const rand = rng(seed);
+  ctx.save();
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2 + rand() * 0.3, v = r * (0.35 + rand() * 0.25);
+    const d = v * (1 - Math.exp(-3.8 * age / 6)) / 0.633, life = 1 - age / 6;
+    ctx.globalAlpha = life; ctx.fillStyle = age < 1.5 ? '#FFFFFF' : accent;
+    ctx.shadowColor = accent; ctx.shadowBlur = r * 0.2;
+    ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * 0.045 * (0.6 + life), 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawWheels(f) {
+  const w = D.wheels; if (!w) return;
+  const t = D.track[f];
+  if (t) {
+    const span = w.spans.find((s) => s.id === t.span) || {};
+    let scale = 1, alpha = 1;
+    if (span.birth && f <= span.birth[1]) {
+      const u = (f - span.birth[0]) / Math.max(1, span.birth[1] - span.birth[0]);
+      scale = u < 0.6 ? 1.12 * ease(u / 0.6) : 1.12 - 0.12 * ease((u - 0.6) / 0.4);
+    }
+    if (span.clear !== undefined && f >= span.clear) { const k = (f - span.clear) / 3; scale *= 1 + 0.15 * k; alpha = 1 - k; }
+    if (span.blur) ctx.filter = `blur(${span.blur}px)`;
+    wheel(t.x, t.y, t.r, f, scale, alpha, w.accent);
+    ctx.filter = 'none';
+  }
+  for (const s of w.spans) {
+    if (s.clear === undefined) continue;
+    const at = D.track[s.clear] || D.track[s.clear - 1];
+    if (at && f >= s.clear && f <= s.clear + 6) burst(at.x, at.y, at.r, f - s.clear, s.clear, w.accent);
+  }
+}
+
+function text(str, x, y, { size = 34, weight = 600, font = SANS, color = '#FFFFFF', align = 'center', track = 0, alpha = 1, shadow = true } = {}) {
+  if (alpha <= 0 || !str) return;
+  ctx.save();
+  ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  ctx.font = `${weight} ${size}px ${font}`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${track}px`;
+  if (shadow) { ctx.shadowColor = 'rgba(0,0,0,0.65)'; ctx.shadowBlur = size * 0.35; ctx.shadowOffsetY = size * 0.06; }
+  ctx.fillText(str, x, y);
+  ctx.restore();
+}
+
+function wordmark(f) {
+  const m = D.wordmark; if (!m) return;
+  const a = f <= m.hold_to ? 1 : clamp(1 - (f - m.hold_to) / Math.max(1, m.fade_to - m.hold_to), 0, 1);
+  text(m.title, W * m.x, H * m.y, { size: 84, weight: 700, alpha: a, track: 2, align: 'left' });
+  text(m.subtitle, W * m.x + 4, H * (m.y + 0.08), { size: 28, weight: 600, alpha: a, track: 9, color: D.wheels ? D.wheels.accent : '#FFF', align: 'left' });
+}
+
+function supers(f) {
+  for (const s of D.supers || []) text(s.text, W / 2, H * (s.y || 0.92), { size: 28, weight: 600, alpha: fade(f, s.from, s.to), track: 4 });
+}
+
+function terminal(f) {
+  const t = D.terminal; if (!t) return;
+  const a = fade(f, t.from, t.to, 3, 4);
+  if (a <= 0) return;
+  const x = 96, y = H * 0.66, w = 940, h = 118;
+  ctx.save();
+  ctx.globalAlpha = a * 0.92; ctx.fillStyle = '#16191C'; ctx.beginPath(); ctx.roundRect(x, y, w, h, 14); ctx.fill();
+  ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(0,230,118,0.55)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+  const n = Math.floor(clamp((f - t.from) / (t.type_frames || 10), 0, 1) * t.cmd.length);
+  const caret = (f % 12) < 6 ? '▍' : ' ';
+  text('$ ' + t.cmd.slice(0, n) + (n < t.cmd.length ? caret : ''), x + 28, y + 38, { size: 28, weight: 500, font: MONO, align: 'left', alpha: a, shadow: false });
+  if (f >= t.result_from) text(t.result, x + 28, y + 82, { size: 24, weight: 500, font: MONO, align: 'left', color: D.wheels ? D.wheels.accent : '#0F0',
+                                                         alpha: a * fade(f, t.result_from, t.to, 3, 4), shadow: false });
+}
+
+function endCard(f) {
+  const e = D.end_card; if (!e) return;
+  const a = clamp((f - e.from) / 12, 0, 1);
+  if (a <= 0) return;
+  text(e.banner, W / 2, H * 0.085, { size: 54, weight: 700, alpha: a, track: 1 });
+  for (const [name, x] of e.modules || []) text(name.toUpperCase(), W * x, H * 0.808, { size: 19, weight: 700, color: '#0A0E12', alpha: a, track: 3, shadow: false });
+  text(e.disclaimer, W / 2, H * 0.855, { size: 21, weight: 600, color: '#2A3036', alpha: a, track: 3, shadow: false });
+  text(e.address, W / 2, H * 0.900, { size: 30, weight: 600, font: MONO, color: '#0A0E12', alpha: a, shadow: false });
+  text(e.footer, W / 2, H * 0.955, { size: 24, weight: 500, color: '#2A3036', alpha: a, shadow: false });
+}
+
+function captions(f) {
+  const c = D.caption_layout || {};
+  for (const cue of D.captions || []) {
+    const a = fade(f, cue.from, cue.to, 3, 3);
+    if (a <= 0) continue;
+    const endCardFrom = D.end_card ? D.end_card.from : Infinity;
+    const lift = (c.lift_ranges || []).some(([a0, b0]) => f >= a0 && f <= b0);
+    const y = f >= endCardFrom ? H * (c.end_card_y || 0.205) : H * (lift ? 0.845 : 0.90);
+    ctx.save();
+    ctx.font = `600 34px ${SANS}`;
+    const w = ctx.measureText(cue.text).width + 44;
+    ctx.globalAlpha = a * 0.55; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.roundRect(W / 2 - w / 2, y - 30, w, 60, 10); ctx.fill();
+    ctx.restore();
+    text(cue.text, W / 2, y, { size: 34, weight: 600, alpha: a, shadow: false });
+  }
+}
+
+window.renderOverlay = function (f) {
+  ctx.clearRect(0, 0, W, H);
+  drawWheels(f); wordmark(f); supers(f); terminal(f); endCard(f); captions(f);
+};
+
+fetch(new URLSearchParams(location.search).get('data') || 'overlay_data.json')
+  .then((r) => r.json()).then((d) => { D = d; window.renderOverlay(0); window.overlayReady = true; });
+</script>
+</body>
+</html>

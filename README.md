@@ -185,3 +185,7 @@ python3 tools/spot_engine/universal_spot_engine.py --out build_spots --three-url
 ```
 
 Per profile it writes a CMX 3600 EDL, a Veo 3.1 / Flow prompt manifest (never run by the engine), a WebGL HUD page for cut 7 with `window.renderFrame(f)`, a 24-bit frame-locked guide WAV, and an FFmpeg assembler that trims each clip to its cut by frame count and masters with two-pass loudnorm. A profile marks `claims_verified` and lists `claims_notes`; the manifest carries both. Tests: `python3 -m unittest tools/spot_engine/test_spot_engine.py`.
+
+## Spot post pass
+
+`tools/spot_engine/post/` finishes a spot after `voices.py`: `post.py run <build> post/profiles/<spot>_post.json profiles/<spot>_lines.tsv` assembles the voiced picture, tracks each stall wheel with macOS Vision (`track.py`, run in `~/.nougen/venvs/spot-vision` with `pyobjc-framework-Vision`), builds captions (split at clauses, at most 55 characters, clamped to the cut when they overrun it by 16 frames or less), renders the data-driven `overlay_rig.html` with Electron (`render_frames.js`, exact alpha), composites it with the audio untouched, and writes a phone copy under 30 MiB. `post.py hud-still` builds cut 7 from a designed still: feathered masks reveal each cluster on its beat, a unison pulse, a slow push-in. All spot copy (wordmark, supers, the terminal's real result line, end-card type, module labels) lives in the post profile.
