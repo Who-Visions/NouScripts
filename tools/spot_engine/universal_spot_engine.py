@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import struct
 import wave
 from dataclasses import asdict, dataclass, field, fields
@@ -99,6 +100,8 @@ class BrandCommercialSpec:
     end_card_address: str = ""          # where to get it; shown on the end card when set
     claims_verified: bool = False       # set true only once every on-screen claim is checked
     claims_notes: List[str] = field(default_factory=list)
+    accent_name: str = ""               # the accent in words, for picture models (they ignore hex codes)
+    spokesperson_look: str = ""         # one fixed description, repeated in every shot, so it is the same person
 
     @classmethod
     def from_dict(cls, d: dict) -> "BrandCommercialSpec":
@@ -172,48 +175,67 @@ class CommercialCompiler:
         return path
 
     # 2. Veo 3.1 / Flow manifest
-    def prompts(self) -> Dict[str, str]:
+    def prompts(self, visual: bool = False) -> Dict[str, str]:
+        """Clip prompts. visual=True drops every spoken line and VO and every piece of on-screen copy: a picture
+        model cannot say lines, and it renders quoted text badly. Voices and type go on in post."""
         s = self.spec
         p1, p2, p3 = s.pillars
-        accent = s.palette["primary_accent"]
-        end = f" A monospace address line reads '{s.end_card_address}'." if s.end_card_address else ""
-        return {
-            "01_hook": (f"35mm T2.2 medium shot, slow dolly in, {s.studio_setting}. {s.spokesperson_role} in {s.wardrobe_spec} "
-                        f"lowers {s.hero_prop_hook}, looks into the lens, and says: '{s.hook_line}'"),
-            "02_stall_p1": (f"{p1.lens_spec} over-the-shoulder shot at {p1.setting_zone}. {p1.actor_role} asks: "
-                            f"'{p1.stall_question}' A glossy 3D white 12-spoke loading wheel pops in six inches above their head."),
-            "03a_walk_in": (f"35mm T2.8 Steadicam backward tracking shot in {s.studio_setting}. {s.spokesperson_role} walks "
-                            f"toward the lens holding {s.hero_artifact}, saying: '{s.intervention_line}'"),
+        accent = (s.accent_name or s.palette["primary_accent"]) if visual else s.palette["primary_accent"]
+        who = f"{s.spokesperson_role} ({s.spokesperson_look})" if visual and s.spokesperson_look else s.spokesperson_role
+
+        def say(lead: str, line: str, silent: str = "") -> str:
+            # Spoken: "<lead>'<line>'". Visual: the silent action, so the shot still reads as speech.
+            if visual:
+                return silent
+            return f"{lead}'{line}'" if line else silent
+
+        def copy(text: str, blank: str) -> str:
+            return blank if visual else text
+
+        end = copy(f" A monospace address line reads '{s.end_card_address}'.", "") if s.end_card_address else ""
+        out = {
+            "01_hook": (f"35mm T2.2 medium shot, slow dolly in, {s.studio_setting}. {who} in {s.wardrobe_spec} "
+                        f"lowers {s.hero_prop_hook} and looks into the lens" + say(", and says: ", s.hook_line, ", speaking to camera") + "."),
+            "02_stall_p1": (f"{p1.lens_spec} over-the-shoulder shot at {p1.setting_zone}. {p1.actor_role}"
+                            + say(" asks: ", p1.stall_question, " looks up, searching their memory") + ". "
+                            f"A glossy 3D white 12-spoke loading wheel pops in six inches above their head."),
+            "03a_walk_in": (f"35mm T2.8 Steadicam backward tracking shot in {s.studio_setting}. {who} walks "
+                            f"toward the lens, facing the camera, holding {s.hero_artifact}" + say(", saying: ", s.intervention_line, ", talking to camera") + "."),
             "03b_macro_drop": (f"85mm T4.0 tabletop macro. A hand sets {s.hero_artifact} with {accent} accents firmly on the "
                                f"desk centre at frame 11, releasing cleanly as a specular sweep crosses the bevel."),
-            "04_clear_p1": (f"{p1.lens_spec} low-angle two-shot. {s.spokesperson_role} says '{p1.spokesperson_cue}' and "
-                            f"{p1.clear_gesture} the 3D wheel above {p1.actor_role}, shattering it into {accent} sparks. "
-                            f"{p1.actor_role} exclaims: '{p1.resolved_answer}'"),
-            "05_clear_p2": (f"{p2.lens_spec} {p2.camera_rig} to {p2.setting_zone}. {p2.actor_role}, under a spinning 3D wheel, "
-                            f"asks: '{p2.stall_question}' {s.spokesperson_role} says '{p2.spokesperson_cue}', {p2.clear_gesture} "
-                            f"the wheel away, and {p2.actor_role} replies: '{p2.resolved_answer}'"),
+            "04_clear_p1": (f"{p1.lens_spec} low-angle two-shot. {who}" + say(" says ", p1.spokesperson_cue) +
+                            f" {p1.clear_gesture} the 3D wheel above {p1.actor_role}, shattering it into {accent} sparks. "
+                            f"{p1.actor_role}" + say(" exclaims: ", p1.resolved_answer, "'s face lights up") + "."),
+            "05_clear_p2": (f"{p2.lens_spec} {p2.camera_rig} to {p2.setting_zone}. {p2.actor_role}, under a spinning 3D wheel,"
+                            + say(" asks: ", p2.stall_question, " squints") + f". {who}"
+                            + say(" says ", p2.spokesperson_cue, " steps in") + f", {p2.clear_gesture} the wheel away, and "
+                            f"{p2.actor_role}" + say(" replies: ", p2.resolved_answer, " grins") + "."),
             "06_clear_p3": (f"{p3.lens_spec} {p3.camera_rig} around {p3.actor_role} stalled at {p3.setting_zone} under a 3D wheel. "
-                            f"{s.spokesperson_role} walks past saying '{p3.spokesperson_cue}', {p3.clear_gesture} the wheel "
+                            f"{who} walks past" + say(" saying ", p3.spokesperson_cue) + f", {p3.clear_gesture} the wheel "
                             f"into {accent} motes; {p3.actor_role} goes back to work."),
             "07_hud_lattice": (f"50mm orbital camera inside a dark HUD ({s.palette['hud_bg_inner']}). A rotating 3D lattice at centre. "
-                               f"Three callouts lock on one after another in {p1.hex_color} ('{p1.hud_label}'), {p2.hex_color} "
-                               f"('{p2.hud_label}') and {p3.hex_color} ('{p3.hud_label}'). VO: '{s.hud_vo_line}' "
-                               f"Prefer the deterministic render from {s.project_slug}_hud_rig.html for this cut."),
-            "08_end_card": (f"85mm packshot, 3 percent push-in. Top banner '{s.brand_name} | {s.tagline}'. Centre lineup: "
-                            f"{', '.join(s.sku_lineup)}. Footer in plain text: Works with {', '.join(s.ecosystem_badges)}.{end} "
-                            f"VO: '{s.outro_vo_line}'"),
+                               f"Three callouts lock on one after another in {p1.hex_color}" + copy(f" ('{p1.hud_label}')", "") +
+                               f", {p2.hex_color}" + copy(f" ('{p2.hud_label}')", "") + f" and {p3.hex_color}" + copy(f" ('{p3.hud_label}')", "") +
+                               "." + say(" VO: ", s.hud_vo_line) +
+                               f" Prefer the deterministic render from {s.project_slug}_hud_rig.html for this cut."),
+            "08_end_card": (f"85mm packshot, 3 percent push-in. " + copy(f"Top banner '{s.brand_name} | {s.tagline}'.", "A plain dark banner across the top.") +
+                            f" Centre lineup of {len(s.sku_lineup)} matte-obsidian hardware modules with {accent} light strips, on a bright seamless sweep" + copy(f": {', '.join(s.sku_lineup)}", "") + "." +
+                            copy(f" Footer in plain text: Works with {', '.join(s.ecosystem_badges)}.", " A clean white footer bar.") +
+                            end + say(" VO: ", s.outro_vo_line)),
         }
+        # Roles start lower case ("a senior engineer"); capitalise them where they open a sentence.
+        return {k: re.sub(r"(^|\. )([a-z])", lambda m: m.group(1) + m.group(2).upper(), v) for k, v in out.items()}
 
     def build_veo_manifest(self) -> Path:
         s = self.spec
-        prompts = self.prompts()
+        prompts, visual = self.prompts(), self.prompts(visual=True)
         manifest = {
             "project": s.project_slug, "fps": FPS, "total_frames": TOTAL_FRAMES,
             "status": "NOT RUN. Generation costs money and needs an explicit go-ahead. Composite on-screen text in post.",
             "claims_verified": s.claims_verified, "claims_notes": s.claims_notes,
             "brand_metadata": asdict(s),
             "clips": [{"index": idx, "clip_id": cid, "frame_in": a, "frame_out": b, "duration_frames": b - a,
-                       "duration_sec": round((b - a) / FPS, 3), "lens": lens, "rig": rig, "prompt": prompts[cid]}
+                       "duration_sec": round((b - a) / FPS, 3), "lens": lens, "rig": rig, "prompt": prompts[cid], "visual_prompt": visual[cid]}
                       for idx, cid, a, b, lens, rig in TIMELINE_TOPOLOGY],
         }
         path = self.out_dir / f"{s.project_slug}_veo_flow.json"
@@ -377,7 +399,7 @@ if (q.get('play') === '1') {{
         cids = [cid for _, cid, *_ in TIMELINE_TOPOLOGY]
         inputs = " ".join(f'-i "{cid}.mp4"' for cid in cids)
         chains = ";".join(
-            f"[{i}:v]fps={FPS},trim=start_frame=0:end_frame={b - a},setpts=PTS-STARTPTS,"
+            f"[{i}:v]fps={FPS},tpad=stop_mode=clone:stop_duration=10,trim=start_frame=0:end_frame={b - a},setpts=PTS-STARTPTS,"
             f"scale=$W:$H:force_original_aspect_ratio=decrease,pad=$W:$H:(ow-iw)/2:(oh-ih)/2,setsar=1[v{i}]"
             for i, (_, _, a, b, _, _) in enumerate(TIMELINE_TOPOLOGY))
         joins = "".join(f"[v{i}]" for i in range(len(cids)))
@@ -385,7 +407,7 @@ if (q.get('play') === '1') {{
         sh = f"""#!/usr/bin/env bash
 # Conform and master for {s.project_slug}: {TOTAL_FRAMES} frames, {TOTAL_FRAMES / FPS:.2f} s at {FPS} fps.
 # Put the nine clips ({cids[0]}.mp4 ... {cids[-1]}.mp4) next to this script; each is trimmed to its cut by frame
-# count, so a 4, 6 or 8 second generated clip is fine. Audio is {s.project_slug}_mix.wav when it exists,
+# count, so a 4, 6 or 8 second generated clip is fine; a clip shorter than its cut holds its last frame. Audio is {s.project_slug}_mix.wav when it exists,
 # otherwise the guide track. Usage: bash {s.project_slug}_assemble.sh [WIDTHxHEIGHT]   (default 3840x2160)
 set -euo pipefail
 cd "$(dirname "$0")"
