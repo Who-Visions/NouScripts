@@ -330,7 +330,7 @@ ipcMain.handle('story:files', (_e, { id }) => {
 
 ipcMain.handle('production:load', (_e, { id }) => {
   const story = storyById(id);
-  return story ? S.loadProduction(story.dir) : null;
+  return story ? S.loadProduction(story.dir, story.id) : null;
 });
 
 ipcMain.handle('media:list', (_e, { id }) => {

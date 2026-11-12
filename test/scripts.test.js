@@ -278,3 +278,26 @@ test('production package: EDL table, frame totals, checks and clips', () => {
   assert.strictEqual(p.stems, null);
   assert.deepStrictEqual(p.files.map((f) => f.name), ['edl.md', 'veo_payloads.json']);
 });
+
+test('production docs: tables, code, checks; files summarise frame folders; stills come from media', () => {
+  const doc = S.parseProductionDoc('lipsync.md', '# Lip-sync: spot\n\n```\nfloor | plan\n```\n\n| Cut | Line |\n|---|---|\n| 1 | Hello |\n\n## Checks\n\n- Re-timed.\n');
+  assert.strictEqual(doc.title, 'Lip-sync');
+  assert.deepStrictEqual(doc.code, ['floor | plan']);
+  assert.strictEqual(doc.tables.length, 1);
+  assert.deepStrictEqual(doc.tables[0].rows, [['1', 'Hello']]);
+  assert.deepStrictEqual(doc.checks, ['Re-timed.']);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nou-prod2-'));
+  fs.mkdirSync(path.join(dir, 'production', 'hud', 'frames'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'media'));
+  fs.writeFileSync(path.join(dir, 'production', 'lipsync.md'), '# Lip\n');
+  fs.writeFileSync(path.join(dir, 'production', 'edl.md'), '# EDL\n');
+  fs.writeFileSync(path.join(dir, 'production', 'hud', 'rig.js'), '');
+  for (const f of ['F561.png', 'F562.png']) fs.writeFileSync(path.join(dir, 'production', 'hud', 'frames', f), '');
+  for (const f of ['hud_sheet.png', 'other.png', 'prod_board.jpg']) fs.writeFileSync(path.join(dir, 'media', f), '');
+  const p = S.loadProduction(dir, 'story-1');
+  assert.deepStrictEqual(p.files.map((f) => f.name), ['edl.md', 'hud/frames/', 'hud/rig.js', 'lipsync.md']);
+  assert.strictEqual(p.files[1].note, '2 rendered frames');
+  assert.deepStrictEqual(p.docs.map((d) => d.name), ['lipsync.md']);
+  assert.deepStrictEqual(p.stills.map((s) => s.name), ['hud_sheet.png', 'prod_board.jpg']);
+  assert.strictEqual(p.stills[0].src, 'nou-media://m/story-1/hud_sheet.png');
+});
