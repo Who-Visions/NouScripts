@@ -161,3 +161,14 @@ an Apple developer account and a server sending pushes; none of that is needed o
 Every element with a rounded class gets Electron's `-electron-corner-smoothing: system-ui` (see `ui/src/index.css`):
 continuous corners like macOS (60% on macOS, 0% elsewhere). It is experimental and a no-op in browsers. At the app's
 10 px and 6 px radii the effect is subtle; it shows most on larger shapes.
+
+## Commercial tab
+
+A story with a `production/` folder gets a **Commercial** view next to As Broadcast. It reads whatever is there:
+
+- `edl.md`: a table of cuts (`| Cut | Frames | In | Out | Length | Camera |`, frames as `F000-F082`) becomes the timeline and the shot list; bullets under a heading containing "Checks" become the Checks section.
+- `veo_payloads.json`: `{ status, clips: [{ clip_id, duration_s, camera, prompt, audio_cue }] }` becomes the generation clips, each with Copy prompt. The app never runs them.
+- `audio.md`: its first table becomes the audio stems.
+- `vfx.yaml`: shown as written.
+
+The header strip shows cuts, frames, edit length, clip total and the script version and running time, so a mismatch between the edit and the script is visible at a glance.

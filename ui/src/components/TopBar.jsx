@@ -14,7 +14,7 @@ import {
   DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 
-const segItem = 'h-7 rounded-[5px] px-3 text-[13px] text-muted-foreground data-[state=on]:bg-secondary data-[state=on]:text-foreground';
+const segItem = 'h-7 rounded-[5px] px-2.5 text-[13px] text-muted-foreground data-[state=on]:bg-secondary data-[state=on]:text-foreground';
 const menu = 'min-w-56 border-border bg-popover';
 
 export default function TopBar({ nou }) {
@@ -145,6 +145,7 @@ export default function TopBar({ nou }) {
               <ToggleGroupItem value="read" className={segItem}>Read</ToggleGroupItem>
               <ToggleGroupItem value="write" className={segItem}>Write</ToggleGroupItem>
               <ToggleGroupItem value="broadcast" className={segItem}>As Broadcast</ToggleGroupItem>
+              {d.hasProduction && <ToggleGroupItem value="commercial" className={segItem}>Commercial</ToggleGroupItem>}
               <ToggleGroupItem value="prompt" className={segItem}>Teleprompter</ToggleGroupItem>
             </ToggleGroup>
           )}

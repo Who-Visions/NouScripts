@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('nou', {
   fetchPages: (req) => ipcRenderer.invoke('lane:fetch', req),
   digest: (req) => ipcRenderer.invoke('lane:digest', req),
   files: (id) => ipcRenderer.invoke('story:files', { id }),
+  production: (id) => ipcRenderer.invoke('production:load', { id }),
   media: (id) => ipcRenderer.invoke('media:list', { id }),
   mediaAttach: (id, url) => ipcRenderer.invoke('media:attach', { id, url }),
   mediaOpen: (id, url) => ipcRenderer.invoke('media:open', { id, url }),

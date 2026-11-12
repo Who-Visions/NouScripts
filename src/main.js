@@ -81,6 +81,7 @@ ipcMain.handle('script:load', (_e, { id, version }) => {
     approval: story.approval, approvalCurrent: S.approvalIsCurrent(story.dir, story.approval),
     modified: S.easternTime(new Date(cur.mtime)),
     banlist: S.loadBanlist(), wordsPerSecond: S.WORDS_PER_SECOND,
+    hasProduction: fs.existsSync(path.join(story.dir, 'production')),
   };
 });
 
@@ -325,6 +326,11 @@ ipcMain.handle('story:files', (_e, { id }) => {
     return { name: f, path: p, title: (title || f).slice(0, 160), url: /^https?:/.test(url || '') ? url : '', kind: f.split(/[_.]/)[0], mtime: stat(p) };
   }).sort((a, b) => b.mtime - a.mtime) : [];
   return { desk, sources };
+});
+
+ipcMain.handle('production:load', (_e, { id }) => {
+  const story = storyById(id);
+  return story ? S.loadProduction(story.dir) : null;
 });
 
 ipcMain.handle('media:list', (_e, { id }) => {

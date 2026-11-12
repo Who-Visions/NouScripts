@@ -572,7 +572,54 @@ function resolveMediaUrl(url, root = storiesRoot()) {
   return abs.startsWith(dir + path.sep) ? abs : null;
 }
 
+// ── Production package (a commercial's edit list, generation clips, audio stems, VFX spec) ───────────────
+// Lives in <story>/production/. Every part is optional; the Commercial tab shows what is there.
+function parseMdTables(md) {
+  const tables = []; let cur = null;
+  for (const raw of String(md || '').split('\n')) {
+    const line = raw.trim();
+    if (!/^\|.*\|$/.test(line)) { cur = null; continue; }
+    const cells = line.slice(1, -1).split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'));
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c))) continue;
+    if (!cur) { cur = { headers: cells, rows: [] }; tables.push(cur); } else cur.rows.push(cells);
+  }
+  return tables;
+}
+
+function parseEdl(md, fps = 24) {
+  const t = parseMdTables(md)[0];
+  const cuts = !t ? [] : t.rows.map((r) => {
+    const m = /F(\d+)\s*-\s*F(\d+)/.exec(r[1] || '');
+    const start = m ? Number(m[1]) : 0; const end = m ? Number(m[2]) : 0;
+    return { name: r[0], start, end, frames: m ? end - start + 1 : 0, tcIn: r[2] || '', tcOut: r[3] || '', note: r[5] || r[r.length - 1] || '' };
+  }).filter((c) => c.frames > 0);
+  const totalFrames = cuts.reduce((a, c) => a + c.frames, 0);
+  const checks = []; let inChecks = false;
+  for (const line of String(md || '').split('\n')) {
+    if (/^##\s/.test(line)) inChecks = /check/i.test(line);
+    else if (inChecks && /^\s*[-*]\s+/.test(line)) checks.push(line.replace(/^\s*[-*]\s+/, ''));
+  }
+  return { cuts, totalFrames, fps, seconds: Math.round((totalFrames / fps) * 1000) / 1000, checks };
+}
+
+function loadProduction(dir) {
+  const pdir = path.join(dir, 'production');
+  if (!fs.existsSync(pdir)) return null;
+  const read = (f) => { try { return fs.readFileSync(path.join(pdir, f), 'utf8'); } catch { return ''; } };
+  const files = fs.readdirSync(pdir).filter((f) => !f.startsWith('.')).sort().map((f) => ({ name: f, path: path.join(pdir, f) }));
+  let veo = null;
+  try { veo = JSON.parse(read('veo_payloads.json')); } catch { veo = null; }
+  const stems = parseMdTables(read('audio.md'))[0] || null;
+  return {
+    dir: pdir, files, edl: parseEdl(read('edl.md')),
+    clips: veo && Array.isArray(veo.clips) ? veo.clips : [],
+    clipSeconds: veo && Array.isArray(veo.clips) ? veo.clips.reduce((a, c) => a + (Number(c.duration_s) || 0), 0) : 0,
+    clipStatus: (veo && veo.status) || '', stems, vfx: read('vfx.yaml'),
+  };
+}
+
 module.exports = {
+  parseMdTables, parseEdl, loadProduction,
   mediaUrl, resolveMediaUrl, decodeEntities,
   extractMedia, mergeMedia, mediaKind,
   digestMessages,

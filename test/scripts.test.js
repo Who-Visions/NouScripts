@@ -257,3 +257,24 @@ test('nou-media URLs resolve only to image files inside a story media folder', (
     'nou-media://m/story/sub/a.jpg', 'nou-media://x/story/a.jpg', 'file:///etc/passwd', 'nou-media://m/story/.hidden.jpg', 'not a url',
   ]) assert.strictEqual(S.resolveMediaUrl(bad, root), null, bad);
 });
+
+test('production package: EDL table, frame totals, checks and clips', () => {
+  const md = '# EDL\n\n| Cut | Frames | In | Out | Length | Camera |\n|---|---|---|---|---|---|\n| 1 Hook | F000-F082 | 00:00:00:00 | 00:00:03:10 | 83 | Push-in \\| slow |\n| 2 Stall | F083-F184 | 00:00:03:11 | 00:00:07:16 | 102 | OTS |\n\n## Checks on the numbers\n\n- One frame too many.\n- Labels differ.\n\n## Other\n\n- not a check\n';
+  const e = S.parseEdl(md);
+  assert.deepStrictEqual(e.cuts.map((c) => [c.name, c.start, c.end, c.frames]), [['1 Hook', 0, 82, 83], ['2 Stall', 83, 184, 102]]);
+  assert.strictEqual(e.cuts[0].note, 'Push-in | slow');
+  assert.strictEqual(e.totalFrames, 185);
+  assert.strictEqual(e.seconds, 7.708);
+  assert.deepStrictEqual(e.checks, ['One frame too many.', 'Labels differ.']);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nou-prod-'));
+  assert.strictEqual(S.loadProduction(dir), null);
+  fs.mkdirSync(path.join(dir, 'production'));
+  fs.writeFileSync(path.join(dir, 'production', 'edl.md'), md);
+  fs.writeFileSync(path.join(dir, 'production', 'veo_payloads.json'), JSON.stringify({ status: 'NOT RUN', clips: [{ clip_id: 'a', duration_s: 3.5 }, { clip_id: 'b', duration_s: 4 }] }));
+  const p = S.loadProduction(dir);
+  assert.strictEqual(p.clips.length, 2);
+  assert.strictEqual(p.clipSeconds, 7.5);
+  assert.strictEqual(p.clipStatus, 'NOT RUN');
+  assert.strictEqual(p.stems, null);
+  assert.deepStrictEqual(p.files.map((f) => f.name), ['edl.md', 'veo_payloads.json']);
+});
