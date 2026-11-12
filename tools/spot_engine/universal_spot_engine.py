@@ -331,8 +331,11 @@ window.renderFrame = function (globalFrame) {{
     const left = x < innerWidth / 2;
     dom.classList.toggle('right', !left);
     dom.style.top = (y - dom.offsetHeight / 2) + 'px';
-    dom.style.left = left ? Math.max(8, x - innerWidth * 0.13 - dom.offsetWidth) + 'px' : '';
-    dom.style.right = left ? '' : Math.max(8, innerWidth - x - innerWidth * 0.13 - dom.offsetWidth) + 'px';
+    // inside 90% title-safe: no label closer than 5% of the width to either edge (AGY Argon grade, 2026-11-12)
+    const safe = innerWidth * 0.05;
+    dom.style.left = left ? Math.max(safe, x - innerWidth * 0.13 - dom.offsetWidth) + 'px' : '';
+    dom.style.right = left ? '' : Math.max(safe, innerWidth - x - innerWidth * 0.13 - dom.offsetWidth) + 'px';
+    dom.style.top = Math.min(innerHeight * 0.95 - dom.offsetHeight, Math.max(innerHeight * 0.05, y - dom.offsetHeight / 2)) + 'px';
     for (const m of group.children) {{
       m.material.color.lerpColors(idle, color, p);
       m.material.opacity = Math.min(1, THREE.MathUtils.lerp(0.35, 0.95, p) * pulse);

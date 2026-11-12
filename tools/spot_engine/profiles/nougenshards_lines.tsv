@@ -1,12 +1,12 @@
-# id	voice	start_frame	end_frame	text  (NouGenShards spot, script v4: on-camera spokesperson am_michael, engineers am_eric and am_onyx, closing VO Nou af_sky)
+# id	voice	start_frame	end_frame	text  (NouGenShards spot, script v4: on-camera spokesperson am_michael, engineers am_eric and am_onyx, closing VO Nou af_sky). Line 03 starts at F165 as a J-cut over the end of cut 2 so it plays at natural speed (AGY Argon grade, 2026-11-12).
 01	am_michael	4	72	Have you ever felt like your agent's context just isn't recalling?
-02	am_eric	86	128	What was that S Q Lite migration fix we shipped last month?
-03	am_michael	186	310	Every session loses context. And that's why we built NouGenShards, to power three dimensions of agent memory.
+02	am_eric	86	128	What was that S Q L ite migration fix we shipped last month?
+03	am_michael	165	310	Every session loses context. And that's why we built NouGenShards, to power three dimensions of agent memory.
 04	am_michael	316	336	Whether that's long-term.
 05	am_eric	352	378	F T S five, wall mode!
 06	am_michael	388	404	Or short-term.
 07	am_onyx	406	436	Which port is the message node on?
 08	am_onyx	450	481	Eighty-seven sixty-six.
 09	am_michael	496	522	Or working memory.
-10	af_sky	564	646	Engineered for local-first speed, with deterministic S Q Lite indexing.
+10	af_sky	564	646	Engineered for local-first speed, with deterministic S Q L ite indexing.
 11	af_sky	656	712	Power your agents with local-first memory from NouGenShards.

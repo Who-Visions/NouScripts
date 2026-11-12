@@ -11,7 +11,8 @@ at its planned frame, or just after the previous line if that is later, and is s
 into the next line's start, never past MAX_SPEED. The plan reports each line's drift in frames.
 
 Pronunciation: the fleet's kokoro_tts.py applies the brand lock (NouGen = "Noo-ghen", hard G). Write acronyms
-the way they are said (S Q Lite, F T S five, wall mode).
+the way they are said, and check with Kokoro's phonemes: 'S Q L ite' gives ess-cue-ell-ite ("S Q Lite" read as
+as-Q-lite), 'F T S five', 'wall mode'.
 
 Run:  python3 voices.py <build_dir> <lines.tsv>
 Env:  NOUGEN_KOKORO_PY (a Python with kokoro + torch; default the NouGenVoice venv),
@@ -28,8 +29,8 @@ from pathlib import Path
 FPS = 24
 TOTAL_SECONDS = 744 / FPS
 GAP = 0.10            # seconds of air between lines
-MAX_SPEED = 1.25      # never speed a line up more than this
-BASE_SPEED = 1.12     # Kokoro speed: a brisk commercial read
+MAX_SPEED = float(os.environ.get("NOUGEN_VOICE_MAX_SPEED", "1.08"))   # natural cadence; was 1.25, graded as rushed
+BASE_SPEED = float(os.environ.get("NOUGEN_VOICE_BASE_SPEED", "1.08"))  # Kokoro speed
 BED_GAIN_DB = -4      # the guide track under the dialogue
 OBS = Path.home() / "The Observatory"
 KOKORO_PY = os.environ.get("NOUGEN_KOKORO_PY", str(OBS / "NouGen/NouGenVoice/backend/venv/bin/python3"))
