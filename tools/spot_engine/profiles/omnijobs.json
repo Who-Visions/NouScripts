@@ -1,0 +1,112 @@
+{
+ "project_slug": "omnijobs_land_faster",
+ "brand_name": "OmniJobs",
+ "product_title": "3D CAREER ENGINE",
+ "tagline": "Land Faster",
+ "header_sub": "AUTOMATED PIPELINE",
+ "spokesperson_role": "A sharp career strategist",
+ "wardrobe_spec": "a tailored slate blazer with cobalt trim",
+ "studio_setting": "a modern glass design loft",
+ "hero_prop_hook": "a portfolio folio",
+ "hero_artifact": "a cobalt-and-graphite OmniJobs automation dock",
+ "hook_line": "Have you ever felt like your job hunt just isn't moving?",
+ "intervention_line": "Manual applications stall out. That's why we built OmniJobs to automate three dimensions of career velocity.",
+ "hud_vo_line": "Engineered with role-matched resume tailoring and autonomous submission routing.",
+ "outro_vo_line": "Accelerate your next offer with OmniJobs.",
+ "legal_disclaimer": "LOCAL-FIRST CREDENTIAL VAULT. ZERO SPAM ROUTING.",
+ "footer_disclaimer": "MULTI-BOARD PARSER READY. HUMAN-IN-THE-LOOP VERIFIED.",
+ "palette": {
+  "primary_bg": "#0B101B",
+  "primary_accent": "#2979FF",
+  "secondary_accent": "#00E5FF",
+  "hud_bg_inner": "#07162C",
+  "hud_bg_outer": "#02060D"
+ },
+ "sku_lineup": [
+  "Travay Lite",
+  "OmniJobs Core",
+  "Resume Morph",
+  "Interview Prep"
+ ],
+ "ecosystem_badges": [
+  "LinkedIn",
+  "Greenhouse",
+  "Lever",
+  "Workday"
+ ],
+ "claims_verified": false,
+ "claims_notes": [
+  "Brand text as sent. The project in the fleet is OmniiJobs (upstream Gsync/omniijobs, MIT); confirm the brand name and that a spot for it is ours to make.",
+  "Its README claims AI resume review, job matching and automated discovery. It does not claim autonomous submission, a credential vault, 'zero spam routing' or human-in-the-loop verification.",
+  "No Workday, Greenhouse or Lever integration was found in the checkout; the footer reads as partnership, so it stays plain 'Works with' text until each one is real.",
+  "Not rendered; not for publishing until every line above is checked."
+ ],
+ "pillars": [
+  {
+   "id": "role_discovery",
+   "name": "Role discovery",
+   "hud_label": "SEMANTIC ROLE MATCH // DEEP RADAR",
+   "hex_color": "#2979FF",
+   "hud_trigger_frame": 575,
+   "clear_frame": 338,
+   "clear_gesture": "pinches",
+   "chime_freq_hz": 1318.51,
+   "actor_role": "a product designer",
+   "setting_zone": "a drafting table",
+   "stall_question": "Where was that principal systems role we bookmarked?",
+   "spokesperson_cue": "Whether that's discovery.",
+   "resolved_answer": "Matched and queued!",
+   "camera_rig": "static over-the-shoulder",
+   "lens_spec": "50mm T2.0",
+   "hud_xyz": [
+    -0.65,
+    0.42,
+    0.2
+   ]
+  },
+  {
+   "id": "resume_morph",
+   "name": "Resume tailoring",
+   "hud_label": "DYNAMIC ATS TAILORING // KEYWORD LOCK",
+   "hex_color": "#00E5FF",
+   "hud_trigger_frame": 595,
+   "clear_frame": 439,
+   "clear_gesture": "flicks",
+   "chime_freq_hz": 1661.22,
+   "actor_role": "a full-stack engineer",
+   "setting_zone": "a lounge monitor wall",
+   "stall_question": "Which resume version highlights my Rust telemetry work?",
+   "spokesperson_cue": "Or tailoring.",
+   "resolved_answer": "Variant B compiled.",
+   "camera_rig": "whip-pan right to left",
+   "lens_spec": "35mm T2.8",
+   "hud_xyz": [
+    -0.55,
+    -0.45,
+    0.1
+   ]
+  },
+  {
+   "id": "auto_submit",
+   "name": "One-click dispatch",
+   "hud_label": "AUTONOMOUS SUBMISSION // VERIFIED",
+   "hex_color": "#00E676",
+   "hud_trigger_frame": 615,
+   "clear_frame": 519,
+   "clear_gesture": "sweeps a hand horizontally through",
+   "chime_freq_hz": 1975.53,
+   "actor_role": "an AI researcher",
+   "setting_zone": "a dual-screen desk",
+   "stall_question": "Did I finish filling out that Workday form?",
+   "spokesperson_cue": "Or dispatch.",
+   "resolved_answer": "Submitted and tracked.",
+   "camera_rig": "30 degree counter-clockwise Steadicam arc",
+   "lens_spec": "35mm T2.2",
+   "hud_xyz": [
+    0.68,
+    0.05,
+    -0.15
+   ]
+  }
+ ]
+}

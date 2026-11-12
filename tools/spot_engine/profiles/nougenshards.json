@@ -1,0 +1,115 @@
+{
+ "project_slug": "nougenshards_recall_faster",
+ "brand_name": "NouGenShards",
+ "product_title": "THREE DIMENSIONS OF MEMORY",
+ "tagline": "Recall Faster",
+ "header_sub": "LOCAL-FIRST MEMORY",
+ "spokesperson_role": "A composed AI systems architect",
+ "wardrobe_spec": "a tailored dark graphite utility jacket with emerald seam piping",
+ "studio_setting": "a sunlit AI engineering studio",
+ "hero_prop_hook": "a matte-black tablet",
+ "hero_artifact": "an obsidian-and-emerald NouGenShards hardware module",
+ "hook_line": "Have you ever felt like your agent's context just isn't recalling?",
+ "intervention_line": "Every session loses context. And that's why we built NouGenShards, to power three dimensions of agent memory.",
+ "hud_vo_line": "Engineered for local-first speed, with deterministic SQLite indexing.",
+ "outro_vo_line": "Power your agents with local-first memory from NouGenShards.",
+ "legal_disclaimer": "LOCAL SQLITE FTS5 SUBSTRATE. LOCAL RECALL, NO CLOUD ROUND TRIP.",
+ "footer_disclaimer": "SOURCE-AVAILABLE LOCAL SUBSTRATE. MULTI-NODE FEDERATION READY.",
+ "palette": {
+  "primary_bg": "#0A0E12",
+  "primary_accent": "#00E676",
+  "secondary_accent": "#00E5FF",
+  "hud_bg_inner": "#031914",
+  "hud_bg_outer": "#000807"
+ },
+ "sku_lineup": [
+  "Shards-Lite",
+  "Shards Core",
+  "Fleet MCP",
+  "Sync Mesh"
+ ],
+ "ecosystem_badges": [
+  "GitHub",
+  "SQLite",
+  "Ollama",
+  "Hugging Face"
+ ],
+ "end_card_address": "github.com/Who-Visions/NouGenShards",
+ "claims_verified": true,
+ "claims_notes": [
+  "From script v4 (persona: agent-builder, resolved by persona.py).",
+  "Source-available, not open source: LICENSE.md.",
+  "The message node is on 8766; nothing shows Blade on 8080.",
+  "Local recall, no cloud round trip, replaces 'zero cloud latency': federation and connectors do use the network.",
+  "No shard ID on screen: IDs are per vault and not unique across vaults.",
+  "Repo is public (checked with gh)."
+ ],
+ "pillars": [
+  {
+   "id": "long_term_vault",
+   "name": "Long-term memory",
+   "hud_label": "LONG-TERM VAULT // SQLITE FTS5",
+   "hex_color": "#00E676",
+   "hud_trigger_frame": 575,
+   "clear_frame": 338,
+   "clear_gesture": "pinches",
+   "chime_freq_hz": 1318.51,
+   "actor_role": "a senior engineer",
+   "setting_zone": "a dual-monitor workstation",
+   "stall_question": "What was that SQLite migration fix we shipped last month?",
+   "spokesperson_cue": "Whether that's long-term.",
+   "resolved_answer": "F T S five, WAL mode!",
+   "camera_rig": "static over-the-shoulder",
+   "lens_spec": "50mm T2.0",
+   "hud_xyz": [
+    -0.55,
+    -0.45,
+    0.1
+   ]
+  },
+  {
+   "id": "working_context",
+   "name": "Short-term memory",
+   "hud_label": "WORKING CONTEXT // ACTIVE SESSION",
+   "hex_color": "#00E5FF",
+   "hud_trigger_frame": 595,
+   "clear_frame": 439,
+   "clear_gesture": "flicks",
+   "chime_freq_hz": 1661.22,
+   "actor_role": "a systems engineer",
+   "setting_zone": "a glass server rack with cyan telemetry",
+   "stall_question": "Which port is the message node on?",
+   "spokesperson_cue": "Or short-term.",
+   "resolved_answer": "Eighty-seven sixty-six.",
+   "camera_rig": "whip-pan right to left",
+   "lens_spec": "35mm T2.8",
+   "hud_xyz": [
+    -0.65,
+    0.42,
+    0.2
+   ]
+  },
+  {
+   "id": "outcome_weighting",
+   "name": "Working memory",
+   "hud_label": "OUTCOME WEIGHTING // RECALL",
+   "hex_color": "#FFB300",
+   "hud_trigger_frame": 615,
+   "clear_frame": 519,
+   "clear_gesture": "sweeps a hand horizontally through",
+   "chime_freq_hz": 1975.53,
+   "actor_role": "a developer frozen over a laptop",
+   "setting_zone": "a standing coding desk",
+   "stall_question": "",
+   "spokesperson_cue": "Or working memory.",
+   "resolved_answer": "",
+   "camera_rig": "30 degree counter-clockwise Steadicam arc",
+   "lens_spec": "35mm T2.2",
+   "hud_xyz": [
+    0.68,
+    0.05,
+    -0.15
+   ]
+  }
+ ]
+}

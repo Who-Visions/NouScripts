@@ -1,0 +1,115 @@
+"""Tests for universal_spot_engine.py. Run: python3 -m unittest tools/spot_engine/test_spot_engine.py"""
+import json
+import math
+import struct
+import sys
+import tempfile
+import unittest
+import wave
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import universal_spot_engine as E  # noqa: E402
+
+
+def profile(name="nougenshards"):
+    return E.load_profile(HERE / "profiles" / f"{name}.json")
+
+
+class SpotEngineTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def test_every_profile_compiles_five_deliverables(self):
+        for prof in sorted((HERE / "profiles").glob("*.json")):
+            out = E.CommercialCompiler(E.load_profile(prof), self.tmp / prof.stem).compile_all()
+            self.assertEqual(sorted(out), ["edl", "ffmpeg_sh", "hud_html", "sfx_wav", "veo_manifest"])
+            for p in out.values():
+                self.assertTrue(p.exists() and p.stat().st_size > 0, p)
+
+    def test_edl_reels_fit_cmx_and_cuts_total_744(self):
+        edl = E.CommercialCompiler(profile(), self.tmp).build_edl().read_text()
+        events = [line for line in edl.splitlines() if line[:3].isdigit()]
+        self.assertEqual(len(events), 9)
+        for line in events:
+            reel = line.split()[1]
+            self.assertLessEqual(len(reel), 8)
+        self.assertIn("00:00:31:00", events[-1])
+        self.assertEqual(sum(b - a for _, _, a, b, _, _ in E.TIMELINE_TOPOLOGY), 744)
+
+    def test_wav_is_24_bit_48k_exactly_31_seconds(self):
+        path = E.CommercialCompiler(profile(), self.tmp).build_procedural_audio()
+        with wave.open(str(path)) as w:
+            self.assertEqual((w.getsampwidth(), w.getframerate(), w.getnchannels()), (3, 48000, 1))
+            self.assertEqual(w.getnframes(), 744 * 48000 // 24)
+
+    def test_impact_and_chimes_land_on_their_frames(self):
+        c = E.CommercialCompiler(profile(), self.tmp)
+        path = c.build_procedural_audio()
+        with wave.open(str(path)) as w:
+            raw = w.readframes(w.getnframes())
+        samples = [struct.unpack("<i", raw[i:i + 3] + (b"\xff" if raw[i + 2] & 0x80 else b"\x00"))[0] for i in range(0, len(raw), 3)]
+
+        def onset(frame):
+            # The first sample, from one frame early, whose level jumps well above the frame before it.
+            start = (frame - 1) * 2000
+            base = max(abs(s) for s in samples[start - 2000:start]) + 1
+            for i in range(start, start + 4000):
+                if abs(samples[i]) > base * 3 + 200000:
+                    return i / 2000.0                         # in frames (2000 samples per frame)
+            return None
+        for f in (E.IMPACT_FRAME, 338, 439, 519):
+            got = onset(f)
+            self.assertIsNotNone(got, f"no onset near F{f}")
+            self.assertAlmostEqual(got, f, delta=0.25)
+
+    def test_pulse_is_116_bpm_not_rounded_to_whole_frames(self):
+        pulses = [e["sec"] for e in E.CommercialCompiler(profile(), self.tmp).sfx_events() if e["kind"] == "pulse"]
+        gaps = {round(b - a, 6) for a, b in zip(pulses, pulses[1:])}
+        self.assertEqual(gaps, {round(60 / 116, 6)})
+        self.assertEqual(len(pulses), math.ceil(31 / (60 / 116)))
+
+    def test_concat_trims_every_clip_to_its_cut(self):
+        c = E.CommercialCompiler(profile(), self.tmp)
+        c.build_ffmpeg_assembler()
+        txt = (self.tmp / f"{c.spec.project_slug}_concat.txt").read_text()
+        outs = [float(line.split()[1]) for line in txt.splitlines() if line.startswith("outpoint")]
+        self.assertEqual(len(outs), 9)
+        self.assertAlmostEqual(sum(outs), 31.0, places=4)
+
+    def test_hud_page_takes_three_from_the_given_url_and_does_not_autoplay(self):
+        html = E.CommercialCompiler(profile(), self.tmp, three_url="file:///x/three.module.js").build_webgl_hud().read_text()
+        self.assertIn("from 'file:///x/three.module.js'", html)
+        self.assertIn("RADIUS = 3.2", html)
+        self.assertIn("Math.min(1,", html)
+        self.assertIn("q.get('play') === '1'", html)
+
+    def test_nougenshards_profile_keeps_the_verified_claims(self):
+        on_screen = json.loads((HERE / "profiles" / "nougenshards.json").read_text())
+        on_screen.pop("claims_notes")                     # the notes explain the corrections, so they name them
+        blob = json.dumps(on_screen)
+        for wrong in ("8080", "Blade", "OPEN-SOURCE", "ZERO CLOUD", "Shard 925"):
+            self.assertNotIn(wrong, blob)
+        manifest = json.loads(E.CommercialCompiler(profile(), self.tmp).build_veo_manifest().read_text())
+        self.assertTrue(manifest["claims_verified"])
+        self.assertIn("github.com/Who-Visions/NouGenShards", manifest["clips"][-1]["prompt"])
+
+    def test_unverified_profile_says_so(self):
+        manifest = json.loads(E.CommercialCompiler(profile("omnijobs"), self.tmp).build_veo_manifest().read_text())
+        self.assertFalse(manifest["claims_verified"])
+        self.assertTrue(manifest["claims_notes"])
+
+    def test_validate_rejects_a_clear_outside_its_cut_and_unknown_keys(self):
+        d = json.loads((HERE / "profiles" / "nougenshards.json").read_text())
+        d["pillars"][0]["clear_frame"] = 400
+        with self.assertRaisesRegex(ValueError, "outside its cut"):
+            E.CommercialCompiler(E.BrandCommercialSpec.from_dict(d), self.tmp)
+        d = json.loads((HERE / "profiles" / "nougenshards.json").read_text())
+        d["tagline_typo"] = "x"
+        with self.assertRaisesRegex(ValueError, "unknown profile keys"):
+            E.BrandCommercialSpec.from_dict(d)
+
+
+if __name__ == "__main__":
+    unittest.main()
