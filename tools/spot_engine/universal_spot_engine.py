@@ -422,7 +422,12 @@ if (q.get('play') === '1') {{
 set -euo pipefail
 cd "$(dirname "$0")"
 SIZE="${{1:-3840x2160}}"; W="${{SIZE%x*}}"; H="${{SIZE#*x}}"
-AUDIO="{s.project_slug}_mix.wav"; [ -f "$AUDIO" ] || AUDIO="{s.project_slug}_sfx_guide.wav"
+AUDIO="{s.project_slug}_mix.wav"
+if [ ! -f "$AUDIO" ]; then
+  AUDIO="{s.project_slug}_sfx_guide.wav"
+  echo "WARNING: no {s.project_slug}_mix.wav, so the master gets the guide track only (sparse ticks and chimes;" >&2
+  echo "         it plays as near silence on phone and laptop speakers). Run voices.py first." >&2
+fi
 for c in {' '.join(cids)}; do
   [ -f "$c.mp4" ] || {{ echo "missing $c.mp4" >&2; exit 1; }}
 done
@@ -433,7 +438,7 @@ LN="loudnorm=I=-14:TP=-2.0:LRA=7:$MEASURED"
 ffmpeg -nostdin -hide_banner -loglevel error -y {inputs} -i "$AUDIO" \\
   -filter_complex "{chains};{joins}concat=n={n}:v=1:a=0[v];[{n}:a]$LN,aresample=48000[a]" \\
   -map "[v]" -map "[a]" -frames:v {TOTAL_FRAMES} -t {TOTAL_FRAMES / FPS:.3f} \\
-  -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p -c:a aac -b:a 320k \\
+  -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p -c:a aac -b:a 256k -ac 2 -movflags +faststart \\
   "{s.project_slug}_MASTER_{TOTAL_FRAMES}F.mp4"
 echo "wrote {s.project_slug}_MASTER_{TOTAL_FRAMES}F.mp4"
 """
