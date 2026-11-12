@@ -121,8 +121,52 @@ class SpotEngineTest(unittest.TestCase):
                 self.assertNotIn("'", text.replace("'s ", " "), f"{name} {cid}: a quote is left: {text}")
                 for line in filter(None, lines):
                     self.assertNotIn(line, text, f"{name} {cid} still says {line!r}")
+                self.assertNotIn("wheel", text, f"{name} {cid}: the stall wheel is a VFX asset, not a prompt")
             spoken = E.CommercialCompiler(spec, self.tmp / name).prompts()
+            self.assertIn("wheel", spoken["02_stall_p1"])
             self.assertIn(spec.hook_line, spoken["01_hook"])
+
+    def test_keyframe_lanes_fall_back_in_order_and_record_failures(self):
+        import free_lanes as F
+        calls = []
+
+        def boom(prompt, dst, tmp):
+            calls.append("a")
+            raise RuntimeError("quota")
+
+        def ok(prompt, dst, tmp):
+            calls.append("b")
+            dst.write_bytes(b"png")
+
+        saved = dict(F.KEYFRAME_LANES)
+        try:
+            F.KEYFRAME_LANES.update({"a": boom, "b": ok})
+            lane, failed = F.make_keyframe("p", self.tmp / "k.png", ["a", "b"], self.tmp)
+        finally:
+            F.KEYFRAME_LANES.clear()
+            F.KEYFRAME_LANES.update(saved)
+        self.assertEqual((lane, calls), ("b", ["a", "b"]))
+        self.assertTrue(failed and failed[0].startswith("a: RuntimeError"))
+        self.assertNotIn("pollinations", F.DEFAULT_KEYFRAME_LANES)
+
+    def test_a_lane_out_of_quota_is_dropped_for_the_rest_of_the_run(self):
+        import free_lanes as F
+
+        def spent(prompt, dst, tmp):
+            raise RuntimeError("code 429 RESOURCE_EXHAUSTED")
+
+        def ok(prompt, dst, tmp):
+            dst.write_bytes(b"png")
+
+        saved = dict(F.KEYFRAME_LANES)
+        try:
+            F.KEYFRAME_LANES.update({"a": spent, "b": ok})
+            lanes = ["a", "b"]
+            F.make_keyframe("p", self.tmp / "k1.png", lanes, self.tmp)
+            self.assertEqual(lanes, ["b"])
+        finally:
+            F.KEYFRAME_LANES.clear()
+            F.KEYFRAME_LANES.update(saved)
 
 
 if __name__ == "__main__":
