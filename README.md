@@ -175,3 +175,13 @@ A story with a `production/` folder gets a **Commercial** view next to As Broadc
 - Files lists one folder down; a folder of rendered frames shows as a count.
 
 The header strip shows cuts, frames, edit length, clip total and the script version and running time, so a mismatch between the edit and the script is visible at a glance.
+
+## Spot engine
+
+`tools/spot_engine/universal_spot_engine.py` compiles the 744-frame, 31.00 s three-pillar commercial for any brand profile in `tools/spot_engine/profiles/` (standard library only):
+
+```bash
+python3 tools/spot_engine/universal_spot_engine.py --out build_spots --three-url file:///path/to/three.module.js
+```
+
+Per profile it writes a CMX 3600 EDL, a Veo 3.1 / Flow prompt manifest (never run by the engine), a WebGL HUD page for cut 7 with `window.renderFrame(f)`, a 24-bit frame-locked guide WAV, and an FFmpeg assembler that trims each clip to its cut by frame count and masters with two-pass loudnorm. A profile marks `claims_verified` and lists `claims_notes`; the manifest carries both. Tests: `python3 -m unittest tools/spot_engine/test_spot_engine.py`.
