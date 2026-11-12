@@ -110,6 +110,20 @@ class SpotEngineTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown profile keys"):
             E.BrandCommercialSpec.from_dict(d)
 
+    def test_visual_prompts_carry_no_spoken_lines_or_copy(self):
+        for name in ("nougenshards", "omnijobs"):
+            spec = profile(name)
+            visual = E.CommercialCompiler(spec, self.tmp / name).prompts(visual=True)
+            lines = [spec.hook_line, spec.intervention_line, spec.hud_vo_line, spec.outro_vo_line, spec.tagline,
+                     spec.end_card_address] + [x for p in spec.pillars for x in (p.stall_question, p.spokesperson_cue,
+                                                                                  p.resolved_answer, p.hud_label)]
+            for cid, text in visual.items():
+                self.assertNotIn("'", text.replace("'s ", " "), f"{name} {cid}: a quote is left: {text}")
+                for line in filter(None, lines):
+                    self.assertNotIn(line, text, f"{name} {cid} still says {line!r}")
+            spoken = E.CommercialCompiler(spec, self.tmp / name).prompts()
+            self.assertIn(spec.hook_line, spoken["01_hook"])
+
 
 if __name__ == "__main__":
     unittest.main()
