@@ -1,21 +1,39 @@
-# Nou Scripts
+<!-- nougen-readme-compiler: v1 -->
 
-A desktop reader for Nou's NouGen News scripts. It is the review step between writing a script and
-rendering it: nothing should be voiced or rendered until a version is approved here.
+# 📺 Nou Scripts
 
-## What it shows
+A desktop reader for Nou's NouGen News scripts. It is the review step between writing a script and rendering it: nothing should be voiced or rendered until a version is approved here.
+
+## 📚 Contents
+- [What it shows](#what-it-shows)
+- [The approval gate](#the-approval-gate)
+- [Script format](#script-format)
+- [Run](#run)
+- [Android APK](#android-apk)
+- [Broadcast script template](#broadcast-script-template)
+- [Producer line lanes](#producer-line-lanes)
+- [Media sources](#media-sources)
+- [React renderer](#react-renderer)
+- [Live jobs over MessagePorts](#live-jobs-over-messageports)
+- [Auto-updates](#auto-updates)
+- [Job notifications](#job-notifications)
+- [Corner smoothing](#corner-smoothing)
+- [Commercial tab](#commercial-tab)
+- [Spot engine](#spot-engine)
+- [Spot post pass](#spot-post-pass)
+
+## 👀 What it shows
 
 - Every story folder under `~/.nougen/nou_assets/stories/` that holds `script_v1.md`, `script_v2.md`, ...
 - Each cue as a card: ON CAM (gold) or VO (purple), its words and estimated seconds, and its source note.
 - Which cues changed since the previous version.
-- Estimated runtime, spoken words, on-camera seconds, and how many OmniAvatar jobs the on-camera lines need
-  (one free job covers about 4.6 s of audio).
+- Estimated runtime, spoken words, on-camera seconds, and how many OmniAvatar jobs the on-camera lines need (one free job covers about 4.6 s of audio).
 - A teleprompter view: Space plays and pauses, the up and down arrows change speed, Esc exits.
 - It reloads by itself when a script file changes on disk.
 
 Set `NOU_STORIES` to read a different folder.
 
-## The approval gate
+## 🔒 The approval gate
 
 **Approve vN** writes `approval.json` into the story folder:
 
@@ -23,15 +41,14 @@ Set `NOU_STORIES` to read a different folder.
 { "version": 2, "file": "script_v2.md", "sha256": "…", "approved_at": "…", "approved_at_eastern": "Tue, Nov 10, 1:10 PM EST", "note": "…" }
 ```
 
-The hash pins the exact bytes. If the script is edited after approval, the app shows the approval as stale,
-and a render step should refuse it. A render step checks it like this:
+The hash pins the exact bytes. If the script is edited after approval, the app shows the approval as stale, and a render step should refuse it. A render step checks it like this:
 
 ```js
 const S = require('./src/scripts');
 if (!S.approvalIsCurrent(dir, S.readApproval(dir))) throw new Error('script not approved');
 ```
 
-## Script format
+## 📝 Script format
 
 ```markdown
 # Nou script v2: Story title (draft, not rendered)
@@ -47,37 +64,26 @@ Spoken line.
 - notes are shown below the cues
 ```
 
-## Run
+## 🚀 Run
 
 ```bash
 npm install
 npm start
 ```
 
-`npm test` runs the parser and approval tests. `npm run capture` writes a screenshot of the window to
-`out/capture.png` without showing it; add `--mode=prompt` after `--` for the teleprompter view.
+`npm test` runs the parser and approval tests. `npm run capture` writes a screenshot of the window to `out/capture.png` without showing it; add `--mode=prompt` after `--` for the teleprompter view.
 
-## Android APK
+## 📱 Android APK
 
-The native Android companion is in `android/`. It uses the Android system folder picker to open a
-story folder containing `script_v1.md`, `script_v2.md`, and (after approval) `approval.json`. It
-works offline and stores the approval beside the script folder. The Android app bundles the same
-short ban-list vocabulary for review flags; a flag is an editing prompt, not an AI-authorship test.
+The native Android companion is in `android/`. It uses the Android system folder picker to open a story folder containing `script_v1.md`, `script_v2.md`, and (after approval) `approval.json`. It works offline and stores the approval beside the script folder. The Android app bundles the same short ban-list vocabulary for review flags; a flag is an editing prompt, not an AI-authorship test.
 
-The `Android APK` GitHub Actions workflow builds an installable debug-signed APK on pull requests,
-main pushes, and manual runs. Download it from the workflow run's **Artifacts** section. When a
-GitHub Release is published, the workflow attaches `nou-scripts-android-<tag>.apk` to that release.
-This local repository currently has no Git remote, so these downloads become available after the
-repository is connected to GitHub and the workflow is run there.
+The `Android APK` GitHub Actions workflow builds an installable debug-signed APK on pull requests, main pushes, and manual runs. Download it from the workflow run's **Artifacts** section. When a GitHub Release is published, the workflow attaches `nou-scripts-android-<tag>.apk` to that release. This local repository currently has no Git remote, so these downloads become available after the repository is connected to GitHub and the workflow is run there.
 
-Local build: `cd android && ./gradlew assembleDebug`. The APK is written to
-`android/app/build/outputs/apk/debug/app-debug.apk`.
+Local build: `cd android && ./gradlew assembleDebug`. The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-## Broadcast script template
+## 📋 Broadcast script template
 
-`templates/broadcast_script_template.md` is the universal format, reverse-engineered from as-broadcast scripts
-(time code + speaker + dialogue tables) and two-column TV news scripts (video left, audio right).
-Copy it into a story folder as `script_v1.md`. What it carries:
+`templates/broadcast_script_template.md` is the universal format, reverse-engineered from as-broadcast scripts (time code + speaker + dialogue tables) and two-column TV news scripts (video left, audio right). Copy it into a story folder as `script_v1.md`. What it carries:
 
 | Invariant | In the file |
 |---|---|
@@ -91,78 +97,50 @@ Copy it into a story folder as `script_v1.md`. What it carries:
 
 **As Broadcast** in the app shows any script in this two-column form with running time code.
 
-## Producer line lanes
+## 🎤 Producer line lanes
 
-The bottom input has three lanes and a **Digest** button. Model calls use `NVIDIA_API_KEY` (Nemotron 3 Ultra by
-default); search uses `EXA_API_KEY_2`/`_3`, then `TAVILY_API_KEY`. Keys are read from the Keymaker in the main process only.
+The bottom input has three lanes and a **Digest** button. Model calls use `NVIDIA_API_KEY` (Nemotron 3 Ultra by default); search uses `EXA_API_KEY_2`/`_3`, then `TAVILY_API_KEY`. Keys are read from the Keymaker in the main process only.
 
 - **Edit**: suggestions open in Write; nothing saves until you do.
 - **Web fetch**: paste links; each is read and saved to the story's `sources/`, then attached.
 - **Research**: a question becomes 3-4 searches; up to 10 sources are saved and a cited `research_*.md` brief is written.
-- **Digest**: works out what each link is at runtime (`tools/digest_resolve.py`): YouTube captions, audio or video
-  transcribed locally with faster-whisper (no paid API), PDFs, or web pages. Writes `digest_*.md` with timestamps.
-  Needs `~/.nougen/venvs/digest` (`faster-whisper yt-dlp youtube-transcript-api pypdf`); without it, links are read as pages.
+- **Digest**: works out what each link is at runtime (`tools/digest_resolve.py`): YouTube captions, audio or video transcribed locally with faster-whisper (no paid API), PDFs, or web pages. Writes `digest_*.md` with timestamps. Needs `~/.nougen/venvs/digest` (`faster-whisper yt-dlp youtube-transcript-api pypdf`); without it, links are read as pages.
 
-## Media sources
+## 🖼️ Media sources
 
-Web fetch and Digest also collect the media a link points to: a page's preview image, inline photos (largest
-`srcset` entry), `<video>`/`<audio>` sources and posters, YouTube/Vimeo/X/TikTok/Loom embeds, and linked media
-files or PDFs. A video or audio link keeps its thumbnail. Photos are downloaded to the story's `media/` folder
-(icons, trackers and anything under 6 KB skipped); everything is listed in `media.json`. The **Media sources** panel
-in the right rail filters by type, and each item can be opened, sent to Digest (video, audio, PDF), attached
-(downloaded photos), or copied as a `VIDEO:` line for a cue. Check the rights to any third-party picture before air.
+Web fetch and Digest also collect the media a link points to: a page's preview image, inline photos (largest `srcset` entry), `<video>`/`<audio>` sources and posters, YouTube/Vimeo/X/TikTok/Loom embeds, and linked media files or PDFs. A video or audio link keeps its thumbnail. Photos are downloaded to the story's `media/` folder (icons, trackers and anything under 6 KB skipped); everything is listed in `media.json`. The **Media sources** panel in the right rail filters by type, and each item can be opened, sent to Digest (video, audio, PDF), attached (downloaded photos), or copied as a `VIDEO:` line for a cue. Check the rights to any third-party picture before air.
 
-## React renderer (ui/)
+## ⚛️ React renderer
 
-The window is a React 19 app built with Vite, Tailwind v4 and shadcn/ui (`ui/`, built to `src/renderer-dist/`,
-which `src/main.js` loads; the old vanilla renderer in `src/renderer/` stays as a fallback when no build exists).
-`npm start` builds first. `ui/src/lib/useNou.js` holds all state and talks to the main process only through
-`window.nou`; the main process and its IPC did not change.
+The window is a React 19 app built with Vite, Tailwind v4 and shadcn/ui (`ui/`, built to `src/renderer-dist/`, which `src/main.js` loads; the old vanilla renderer in `src/renderer/` stays as a fallback when no build exists). `npm start` builds first. `ui/src/lib/useNou.js` holds all state and talks to the main process only through `window.nou`; the main process and its IPC did not change.
 
-Layout: top band (hamburger menu with story actions and shortcuts, title with a version dropdown, the four view
-modes, a View menu for Changes / Source notes / Side panel, then telemetry); middle (icon rail, panel column with
-Stories, Media sources, Desk and Sources grouped in collapsible sections, the script, and a right rail with the
-approval gate and notes as accordions); bottom dock (lane dropdown and model, the producer input with + and
-Digest, the last reply).
+Layout: top band (hamburger menu with story actions and shortcuts, title with a version dropdown, the four view modes, a View menu for Changes / Source notes / Side panel, then telemetry); middle (icon rail, panel column with Stories, Media sources, Desk and Sources grouped in collapsible sections, the script, and a right rail with the approval gate and notes as accordions); bottom dock (lane dropdown and model, the producer input with + and Digest, the last reply).
 
-Component drafts were requested from free NouGenOpen lanes (`design/draft_component.py`, `design/draft_all.sh`,
-contract in `design/react_spec.md`); `IconRail.jsx` was kept from a draft, the rest were rewritten in review.
+Component drafts were requested from free NouGenOpen lanes (`design/draft_component.py`, `design/draft_all.sh`, contract in `design/react_spec.md`); `IconRail.jsx` was kept from a draft, the rest were rewritten in review.
 
-## Live jobs over MessagePorts
+## 📡 Live jobs over MessagePorts
 
-Fetch, Digest, Research and Edit each open their own `MessageChannelMain` (`withJob` in `src/main.js`). One port
-goes to the window (`src/preload.js` forwards it into the page, as the Electron MessagePorts guide shows for
-context-isolated pages; `ui/src/lib/jobs.js` picks it up by job id). The job streams named steps, which the dock
-shows live with elapsed time, and the dock's Stop button sends `{type: 'cancel'}`: every network call in the job
-and the local transcription process are aborted through one `AbortSignal` carried by `AsyncLocalStorage`.
+Fetch, Digest, Research and Edit each open their own `MessageChannelMain` (`withJob` in `src/main.js`). One port goes to the window (`src/preload.js` forwards it into the page, as the Electron MessagePorts guide shows for context-isolated pages; `ui/src/lib/jobs.js` picks it up by job id). The job streams named steps, which the dock shows live with elapsed time, and the dock's Stop button sends `{type: 'cancel'}`: every network call in the job and the local transcription process are aborted through one `AbortSignal` carried by `AsyncLocalStorage`.
 
-## Auto-updates
+## 🔄 Auto-updates
 
-`src/updater.js` wraps Electron's `autoUpdater` (Squirrel.Mac and Squirrel.Windows). It is inert until both are true:
-the app is packaged (`app.isPackaged`) and `NOU_UPDATE_URL` points at a feed. The feed is read per platform and
-version: `$NOU_UPDATE_URL/<platform>-<arch>/<version>`.
+`src/updater.js` wraps Electron's `autoUpdater` (Squirrel.Mac and Squirrel.Windows). It is inert until both are true: the app is packaged (`app.isPackaged`) and `NOU_UPDATE_URL` points at a feed. The feed is read per platform and version: `$NOU_UPDATE_URL/<platform>-<arch>/<version>`.
 
 Before updates can install for real, two things must exist and neither is in this repo yet:
 1. A signed macOS build. Electron's docs say Squirrel.Mac only applies updates to a signed app.
 2. A feed server with the release artifacts (zip for macOS, Squirrel for Windows) and an endpoint that answers the update check.
 
-An update is never installed on its own. When one is downloaded the top bar offers "Restart to install the update", and
-that refuses while a job is running (`isBusy` counts the MessagePort jobs). Tests: `node --test test/updater.test.js`.
+An update is never installed on its own. When one is downloaded the top bar offers "Restart to install the update", and that refuses while a job is running (`isBusy` counts the MessagePort jobs). Tests: `node --test test/updater.test.js`.
 
-## Job notifications
+## 🔔 Job notifications
 
-When Web fetch, Digest, Research or Edit finishes or fails while the Nou Scripts window is not in front, a local
-notification says so (Electron `Notification`, shown only when the window is not focused). Cancelled jobs stay quiet.
-This is local only. Electron's push-notification API (APNS) would need a signed macOS app with the push entitlement,
-an Apple developer account and a server sending pushes; none of that is needed or present.
+When Web fetch, Digest, Research or Edit finishes or fails while the Nou Scripts window is not in front, a local notification says so (Electron `Notification`, shown only when the window is not focused). Cancelled jobs stay quiet. This is local only. Electron's push-notification API (APNS) would need a signed macOS app with the push entitlement, an Apple developer account and a server sending pushes; none of that is needed or present.
 
-## Corner smoothing
+## ⭕ Corner smoothing
 
-Every element with a rounded class gets Electron's `-electron-corner-smoothing: system-ui` (see `ui/src/index.css`):
-continuous corners like macOS (60% on macOS, 0% elsewhere). It is experimental and a no-op in browsers. At the app's
-10 px and 6 px radii the effect is subtle; it shows most on larger shapes.
+Every element with a rounded class gets Electron's `-electron-corner-smoothing: system-ui` (see `ui/src/index.css`): continuous corners like macOS (60% on macOS, 0% elsewhere). It is experimental and a no-op in browsers. At the app's 10 px and 6 px radii the effect is subtle; it shows most on larger shapes.
 
-## Commercial tab
+## 🎬 Commercial tab
 
 A story with a `production/` folder gets a **Commercial** view next to As Broadcast. It reads whatever is there:
 
@@ -176,7 +154,7 @@ A story with a `production/` folder gets a **Commercial** view next to As Broadc
 
 The header strip shows cuts, frames, edit length, clip total and the script version and running time, so a mismatch between the edit and the script is visible at a glance.
 
-## Spot engine
+## ⚙️ Spot engine
 
 `tools/spot_engine/universal_spot_engine.py` compiles the 744-frame, 31.00 s three-pillar commercial for any brand profile in `tools/spot_engine/profiles/` (standard library only):
 
@@ -186,6 +164,10 @@ python3 tools/spot_engine/universal_spot_engine.py --out build_spots --three-url
 
 Per profile it writes a CMX 3600 EDL, a Veo 3.1 / Flow prompt manifest (never run by the engine), a WebGL HUD page for cut 7 with `window.renderFrame(f)`, a 24-bit frame-locked guide WAV, and an FFmpeg assembler that trims each clip to its cut by frame count and masters with two-pass loudnorm. A profile marks `claims_verified` and lists `claims_notes`; the manifest carries both. Tests: `python3 -m unittest tools/spot_engine/test_spot_engine.py`.
 
-## Spot post pass
+## 🎬 Spot post pass
 
 `tools/spot_engine/post/` finishes a spot after `voices.py`: `post.py run <build> post/profiles/<spot>_post.json profiles/<spot>_lines.tsv` assembles the voiced picture, tracks each stall wheel with macOS Vision (`track.py`, run in `~/.nougen/venvs/spot-vision` with `pyobjc-framework-Vision`), builds captions (split at clauses, at most 55 characters, clamped to the cut when they overrun it by 16 frames or less), renders the data-driven `overlay_rig.html` with Electron (`render_frames.js`, exact alpha), composites it with the audio untouched, and writes a phone copy under 30 MiB. `post.py hud-still` builds cut 7 from a designed still: feathered masks reveal each cluster on its beat, a unison pulse, a slow push-in. All spot copy (wordmark, supers, the terminal's real result line, end-card type, module labels) lives in the post profile.
+
+## 🔗 Links
+
+- [Source Repository](<https://github.com/Who-Visions/NouScripts>)
